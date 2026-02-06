@@ -62,7 +62,7 @@ class TraitsExtractor:
             logger.error(f"Échec du chargement du modèle {model_name} : {str(e)}")
             raise
 
-    def extract_traits(self, text: str) -> List[CharacterTrait]:
+    def extract_traits(self, text: str, directive: Optional[str] = None) -> List[CharacterTrait]:
         """
         Extrait les traits de caractère à partir de la description textuelle fournie.
 
@@ -73,6 +73,11 @@ class TraitsExtractor:
             Liste d'objets CharacterTrait avec noms de traits et scores de confiance
         """
         logger.info(f"Extraction des traits à partir d'un texte de longueur : {len(text)}")
+        
+        if directive:
+            logger.info(f"Directive fournie pour l'extraction : {directive}")
+            # Dans une implémentation réelle, nous utiliserions la directive pour guider le modèle
+            # Par exemple, en l'ajoutant au contexte ou en ajustant les paramètres du modèle
         
         all_traits = []
         for category, traits in TRAIT_CATEGORIES.items():

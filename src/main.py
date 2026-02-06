@@ -7,6 +7,12 @@ import logging
 import uvicorn
 import os
 
+import sys
+import os
+
+# Ajouter le répertoire parent au PYTHONPATH
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from src.api.api import app
 
 # Configuration du logging
