@@ -1,46 +1,46 @@
-# Character Traits Extractor
+# Extracteur de Traits de Caractère
 
-A FastAPI application that extracts character traits from textual descriptions using Hugging Face transformer models.
+Une application FastAPI qui extrait les traits de caractère à partir de descriptions textuelles en utilisant les modèles transformer de Hugging Face.
 
-## Overview
+## Aperçu
 
-This service analyzes character descriptions and identifies key personality traits, values, and emotional characteristics. It uses pre-trained transformer models from Hugging Face to perform zero-shot classification of character traits.
+Ce service analyse les descriptions de personnages et identifie les principaux traits de personnalité, valeurs et caractéristiques émotionnelles. Il utilise des modèles transformer pré-entraînés de Hugging Face pour effectuer une classification zero-shot des traits de caractère.
 
-## Features
+## Fonctionnalités
 
-- Extract character traits from text descriptions
-- Categorize traits into personality traits, values, and emotional states
-- Generate a summary of the character based on extracted traits
-- API documented with OpenAPI/Swagger UI
-- Docker containerization for easy deployment
-- CI/CD pipeline using GitHub Actions
+- Extraction des traits de caractère à partir de descriptions textuelles
+- Catégorisation des traits en traits de personnalité, valeurs et états émotionnels
+- Génération d'un résumé du personnage basé sur les traits extraits
+- API documentée avec OpenAPI/Swagger UI
+- Conteneurisation Docker pour un déploiement facile
+- Pipeline CI/CD utilisant GitHub Actions
 
 ## Architecture
 
-The application follows a modular architecture:
+L'application suit une architecture modulaire :
 
-- **API Layer** (`src/api/`): FastAPI endpoints for handling requests
-- **Service Layer** (`src/services/`): Core business logic for trait extraction
-- **Model Layer** (`src/models/`): Pydantic models for input/output validation
-- **Utils** (`src/utils/`): Helper utilities and shared functions
+- **Couche API** (`src/api/`) : Points de terminaison FastAPI pour traiter les requêtes
+- **Couche Service** (`src/services/`) : Logique métier principale pour l'extraction de traits
+- **Couche Modèle** (`src/models/`) : Modèles Pydantic pour la validation des entrées/sorties
+- **Utilitaires** (`src/utils/`) : Fonctions utilitaires et communes
 
-## API Documentation
+## Documentation API
 
-When running the application, API documentation is available at:
+Lors de l'exécution de l'application, la documentation de l'API est disponible à :
 
-- Swagger UI: `/api/docs`
-- ReDoc: `/api/redoc`
-- OpenAPI JSON: `/api/openapi.json`
+- Swagger UI : `/api/docs`
+- ReDoc : `/api/redoc`
+- OpenAPI JSON : `/api/openapi.json`
 
-## Endpoints
+## Points de terminaison
 
-- `POST /api/v1/traits/extract`: Extract traits from a character description
-- `GET /health`: Health check endpoint
+- `POST /api/v1/traits/extract` : Extrait les traits d'une description de personnage
+- `GET /health` : Point de terminaison de vérification de santé
 
-## Getting Started
+## Démarrage
 
-See the [Installation](./installation.md) and [Usage](./usage.md) guides to get started with the application.
+Consultez les guides d'[Installation](./installation.md) et d'[Utilisation](./usage.md) pour commencer avec l'application.
 
-## Development
+## Développement
 
-Refer to the [Development Guide](./development.md) for information on contributing to the project, running tests, and the development workflow.
+Référez-vous au [Guide de développement](./development.md) pour des informations sur la contribution au projet, l'exécution des tests et le flux de travail de développement.

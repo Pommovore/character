@@ -1,8 +1,7 @@
-"""
-Pydantic models for character traits extraction API.
+"""Modèles Pydantic pour l'API d'extraction de traits de caractère.
 
-This module defines the data models used for input validation and response formatting
-in the character traits extraction API.
+Ce module définit les modèles de données utilisés pour la validation des entrées et le formatage des réponses
+dans l'API d'extraction de traits de caractère.
 """
 
 from typing import Dict, List, Optional
@@ -10,26 +9,26 @@ from pydantic import BaseModel, Field
 
 
 class CharacterDescription(BaseModel):
-    """Input model for character description text."""
+    """Modèle d'entrée pour le texte de description du personnage."""
 
-    text: str = Field(..., min_length=10, description="Character description text to analyze")
+    text: str = Field(..., min_length=10, description="Texte de description du personnage à analyser")
     model_name: Optional[str] = Field(
         "distilbert-base-uncased",
-        description="Hugging Face model to use for trait extraction"
+        description="Modèle Hugging Face à utiliser pour l'extraction de traits"
     )
 
 
 class CharacterTrait(BaseModel):
-    """Model representing a single character trait with confidence score."""
+    """Modèle représentant un seul trait de caractère avec score de confiance."""
 
-    trait: str = Field(..., description="Name of the character trait")
-    score: float = Field(..., ge=0.0, le=1.0, description="Confidence score for this trait")
-    category: Optional[str] = Field(None, description="Category of the trait (e.g., 'Personality', 'Values')")
+    trait: str = Field(..., description="Nom du trait de caractère")
+    score: float = Field(..., ge=0.0, le=1.0, description="Score de confiance pour ce trait")
+    category: Optional[str] = Field(None, description="Catégorie du trait (ex: 'Personnalité', 'Valeurs')")
 
 
 class CharacterTraitsResponse(BaseModel):
-    """Response model containing extracted character traits."""
+    """Modèle de réponse contenant les traits de caractère extraits."""
 
-    traits: List[CharacterTrait] = Field(..., description="List of extracted character traits")
-    summary: Optional[str] = Field(None, description="Summary of the character's main traits")
-    model_used: str = Field(..., description="Name of the model used for extraction")
+    traits: List[CharacterTrait] = Field(..., description="Liste des traits de caractère extraits")
+    summary: Optional[str] = Field(None, description="Résumé des principaux traits du personnage")
+    model_used: str = Field(..., description="Nom du modèle utilisé pour l'extraction")

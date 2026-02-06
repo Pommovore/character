@@ -1,8 +1,7 @@
-"""
-Traits extraction service using Hugging Face models.
+"""Service d'extraction de traits utilisant les modèles Hugging Face.
 
-This module provides functionality to extract character traits from text descriptions
-using pre-trained transformer models from Hugging Face.
+Ce module fournit des fonctionnalités pour extraire les traits de caractère à partir de descriptions textuelles
+en utilisant des modèles transformer pré-entraînés de Hugging Face.
 """
 
 import logging
@@ -13,77 +12,77 @@ import numpy as np
 
 from src.models.character_traits import CharacterTrait
 
-# Configure logging
+# Configuration du logging
 logger = logging.getLogger(__name__)
 
-# Pre-defined character trait categories and related traits
+# Catégories de traits de caractère prédéfinies et traits associés
 TRAIT_CATEGORIES = {
-    "Personality": [
-        "Courageous", "Ambitious", "Intelligent", "Compassionate", "Curious",
-        "Loyal", "Independent", "Creative", "Responsible", "Optimistic",
-        "Pessimistic", "Cautious", "Adventurous", "Introverted", "Extroverted"
+    "Personnalité": [
+        "Courageux", "Ambitieux", "Intelligent", "Compatissant", "Curieux",
+        "Loyal", "Indépendant", "Créatif", "Responsable", "Optimiste",
+        "Pessimiste", "Prudent", "Aventureux", "Introverti", "Extraverti"
     ],
-    "Values": [
-        "Honest", "Reliable", "Just", "Honorable", "Respectful",
-        "Generous", "Selfish", "Materialistic", "Spiritual", "Traditional"
+    "Valeurs": [
+        "Honnête", "Fiable", "Juste", "Honorable", "Respectueux",
+        "Généreux", "Égoïste", "Matérialiste", "Spirituel", "Traditionnel"
     ],
-    "Emotions": [
-        "Joyful", "Fearful", "Angry", "Melancholic", "Serene",
-        "Anxious", "Passionate", "Apathetic", "Enthusiastic", "Jealous"
+    "Émotions": [
+        "Joyeux", "Craintif", "Colérique", "Mélancolique", "Serein",
+        "Anxieux", "Passionné", "Apathique", "Enthousiaste", "Jaloux"
     ]
 }
 
 
 class TraitsExtractor:
-    """Service for extracting character traits from text descriptions."""
+    """Service pour extraire les traits de caractère à partir de descriptions textuelles."""
 
     def __init__(self, model_name: str = "distilbert-base-uncased"):
         """
-        Initialize the traits extractor with a specific model.
+        Initialise l'extracteur de traits avec un modèle spécifique.
 
         Args:
-            model_name: Hugging Face model name to use for extraction
+            model_name: Nom du modèle Hugging Face à utiliser pour l'extraction
         """
         self.model_name = model_name
-        logger.info(f"Initializing TraitsExtractor with model: {model_name}")
+        logger.info(f"Initialisation de TraitsExtractor avec le modèle : {model_name}")
         
         try:
             self.tokenizer = AutoTokenizer.from_pretrained(model_name)
             self.model = AutoModelForSequenceClassification.from_pretrained(model_name)
             
-            # For demonstration, we use a text classification pipeline
-            # In a real application, you'd use a more specific model or fine-tune one
+            # Pour la démonstration, nous utilisons un pipeline de classification de texte
+            # Dans une application réelle, vous utiliseriez un modèle plus spécifique ou affiné
             self.classifier = pipeline(
                 "zero-shot-classification", 
                 model=self.model_name,
                 tokenizer=self.tokenizer
             )
-            logger.info(f"Successfully loaded model: {model_name}")
+            logger.info(f"Modèle chargé avec succès : {model_name}")
         except Exception as e:
-            logger.error(f"Failed to load model {model_name}: {str(e)}")
+            logger.error(f"Échec du chargement du modèle {model_name} : {str(e)}")
             raise
 
     def extract_traits(self, text: str) -> List[CharacterTrait]:
         """
-        Extract character traits from the provided text description.
+        Extrait les traits de caractère à partir de la description textuelle fournie.
 
         Args:
-            text: Character description text
+            text: Texte de description du personnage
 
         Returns:
-            List of CharacterTrait objects with trait names and confidence scores
+            Liste d'objets CharacterTrait avec noms de traits et scores de confiance
         """
-        logger.info(f"Extracting traits from text of length: {len(text)}")
+        logger.info(f"Extraction des traits à partir d'un texte de longueur : {len(text)}")
         
         all_traits = []
         for category, traits in TRAIT_CATEGORIES.items():
             try:
-                # Use zero-shot classification to identify traits in this category
+                # Utiliser la classification zero-shot pour identifier les traits dans cette catégorie
                 result = self.classifier(text, traits, multi_label=True)
                 
-                # Process the results
+                # Traiter les résultats
                 for trait, score in zip(result["labels"], result["scores"]):
-                    # Only include traits with scores above threshold
+                    # Inclure uniquement les traits avec des scores au-dessus du seuil
                     if score > 0.3:  
                         all_traits.append(CharacterTrait(
                             trait=trait,
@@ -91,31 +90,31 @@ class TraitsExtractor:
                             category=category
                         ))
             except Exception as e:
-                logger.error(f"Error extracting traits for category {category}: {str(e)}")
+                logger.error(f"Erreur lors de l'extraction des traits pour la catégorie {category} : {str(e)}")
         
-        # Sort by score (highest first)
+        # Trier par score (du plus élevé au plus bas)
         all_traits.sort(key=lambda x: x.score, reverse=True)
-        logger.info(f"Extracted {len(all_traits)} traits with scores above threshold")
+        logger.info(f"Extraction de {len(all_traits)} traits avec des scores au-dessus du seuil")
         
         return all_traits
     
     def generate_summary(self, traits: List[CharacterTrait]) -> str:
         """
-        Generate a summary of the character based on the extracted traits.
+        Génère un résumé du personnage basé sur les traits extraits.
 
         Args:
-            traits: List of CharacterTrait objects
+            traits: Liste d'objets CharacterTrait
 
         Returns:
-            Textual summary of the character's main traits
+            Résumé textuel des principaux traits du personnage
         """
         if not traits:
-            return "No significant character traits were identified."
+            return "Aucun trait de caractère significatif n'a été identifié."
             
-        # Take the top 5 traits or all if fewer
+        # Prendre les 5 premiers traits ou tous s'il y en a moins
         top_traits = traits[:min(5, len(traits))]
         
-        # Create the summary
+        # Créer le résumé
         trait_phrases = [f"{t.trait} ({t.category})" for t in top_traits]
         traits_text = ", ".join(trait_phrases[:-1])
         if len(trait_phrases) > 1:
@@ -123,5 +122,5 @@ class TraitsExtractor:
         else:
             traits_text = trait_phrases[0]
             
-        summary = f"This character is primarily characterized by {traits_text}."
+        summary = f"Ce personnage est principalement caractérisé par {traits_text}."
         return summary

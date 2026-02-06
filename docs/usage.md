@@ -1,93 +1,93 @@
-# Usage Guide
+# Guide d'Utilisation
 
-This guide explains how to use the Character Traits Extractor API.
+Ce guide explique comment utiliser l'API d'Extracteur de Traits de Caractère.
 
-## API Basics
+## Bases de l'API
 
-The Character Traits Extractor provides a RESTful API with JSON request and response formats. The base URL for all API endpoints is:
+L'Extracteur de Traits de Caractère fournit une API RESTful avec des formats de requête et de réponse JSON. L'URL de base pour tous les points de terminaison de l'API est :
 
 ```
-http://<host>:<port>/api/v1
+http://<hôte>:<port>/api/v1
 ```
 
-## Authentication
+## Authentification
 
-The API currently does not require authentication. For production deployments, it is recommended to implement an authentication mechanism.
+L'API ne nécessite actuellement pas d'authentification. Pour les déploiements en production, il est recommandé de mettre en place un mécanisme d'authentification.
 
-## Extracting Character Traits
+## Extraction des Traits de Caractère
 
-### Endpoint
+### Point de terminaison
 
 ```
 POST /api/v1/traits/extract
 ```
 
-### Request Format
+### Format de la Requête
 
 ```json
 {
-  "text": "Harry Potter is a brave and loyal young wizard who consistently shows courage in the face of danger. Despite his difficult upbringing with the Dursleys, he maintains a strong moral compass and values friendship above all else.",
+  "text": "Harry Potter est un jeune sorcier courageux et loyal qui fait constamment preuve de bravoure face au danger. Malgré son éducation difficile chez les Dursley, il maintient une forte boussole morale et valorise l'amitié par-dessus tout.",
   "model_name": "distilbert-base-uncased"
 }
 ```
 
-Parameters:
-- `text` (required): The character description to analyze. Must be at least 10 characters long.
-- `model_name` (optional): The Hugging Face model to use for trait extraction. Defaults to "distilbert-base-uncased".
+Paramètres :
+- `text` (obligatoire) : La description du personnage à analyser. Doit comporter au moins 10 caractères.
+- `model_name` (optionnel) : Le modèle Hugging Face à utiliser pour l'extraction des traits. Par défaut : "distilbert-base-uncased".
 
-### Response Format
+### Format de la Réponse
 
 ```json
 {
   "traits": [
     {
-      "trait": "Courageous",
+      "trait": "Courageux",
       "score": 0.92,
-      "category": "Personality"
+      "category": "Personnalité"
     },
     {
       "trait": "Loyal",
       "score": 0.85,
-      "category": "Personality"
+      "category": "Personnalité"
     },
     {
       "trait": "Moral",
       "score": 0.78,
-      "category": "Values"
+      "category": "Valeurs"
     }
   ],
-  "summary": "This character is primarily characterized by Courageous (Personality), Loyal (Personality) and Moral (Values).",
+  "summary": "Ce personnage est principalement caractérisé par Courageux (Personnalité), Loyal (Personnalité) et Moral (Valeurs).",
   "model_used": "distilbert-base-uncased"
 }
 ```
 
-The response includes:
-- `traits`: A list of traits extracted from the text, each with:
-  - `trait`: The name of the trait
-  - `score`: Confidence score (between 0 and 1)
-  - `category`: The category of the trait (Personality, Values, Emotions)
-- `summary`: A generated summary of the main character traits
-- `model_used`: The name of the model used for extraction
+La réponse inclut :
+- `traits` : Une liste de traits extraits du texte, chacun avec :
+  - `trait` : Le nom du trait
+  - `score` : Score de confiance (entre 0 et 1)
+  - `category` : La catégorie du trait (Personnalité, Valeurs, Émotions)
+- `summary` : Un résumé généré des principaux traits de caractère
+- `model_used` : Le nom du modèle utilisé pour l'extraction
 
-### Example cURL Request
+### Exemple de Requête cURL
 
 ```bash
 curl -X POST "http://localhost:8000/api/v1/traits/extract" \
      -H "Content-Type: application/json" \
      -d '{
-           "text": "Harry Potter is a brave and loyal young wizard who consistently shows courage in the face of danger. Despite his difficult upbringing with the Dursleys, he maintains a strong moral compass and values friendship above all else.",
+           "text": "Harry Potter est un jeune sorcier courageux et loyal qui fait constamment preuve de bravoure face au danger. Malgré son éducation difficile chez les Dursley, il maintient une forte boussole morale et valorise l\'amitié par-dessus tout.",
            "model_name": "distilbert-base-uncased"
          }'
 ```
 
-### Example Python Request
+### Exemple de Requête Python
 
 ```python
 import requests
 
 url = "http://localhost:8000/api/v1/traits/extract"
 payload = {
-    "text": "Harry Potter is a brave and loyal young wizard who consistently shows courage in the face of danger. Despite his difficult upbringing with the Dursleys, he maintains a strong moral compass and values friendship above all else.",
+    "text": "Harry Potter est un jeune sorcier courageux et loyal qui fait constamment preuve de bravoure face au danger. Malgré son éducation difficile chez les Dursley, il maintient une forte boussole morale et valorise l'amitié par-dessus tout.",
     "model_name": "distilbert-base-uncased"
 }
 
@@ -95,44 +95,44 @@ response = requests.post(url, json=payload)
 print(response.json())
 ```
 
-## Health Check
+## Vérification de Santé
 
-### Endpoint
+### Point de terminaison
 
 ```
 GET /health
 ```
 
-### Response Format
+### Format de la Réponse
 
 ```json
 {
-  "status": "healthy",
+  "status": "en bonne santé",
   "version": "0.1.0"
 }
 ```
 
-## Error Handling
+## Gestion des Erreurs
 
-The API returns standard HTTP status codes to indicate success or failure:
+L'API renvoie des codes d'état HTTP standard pour indiquer le succès ou l'échec :
 
-- `200 OK`: Request successful
-- `400 Bad Request`: Invalid request format
-- `422 Unprocessable Entity`: Validation error (e.g., text too short)
-- `500 Internal Server Error`: Server-side error
+- `200 OK` : Requête réussie
+- `400 Bad Request` : Format de requête invalide
+- `422 Unprocessable Entity` : Erreur de validation (ex : texte trop court)
+- `500 Internal Server Error` : Erreur côté serveur
 
-Error responses include a detail message:
+Les réponses d'erreur incluent un message détaillé :
 
 ```json
 {
-  "detail": "Error message describing what went wrong"
+  "detail": "Message d'erreur décrivant ce qui s'est mal passé"
 }
 ```
 
-## API Documentation
+## Documentation API
 
-The API documentation is available at:
+La documentation de l'API est disponible à :
 
-- Swagger UI: `/api/docs`
-- ReDoc: `/api/redoc`
-- OpenAPI JSON: `/api/openapi.json`
+- Swagger UI : `/api/docs`
+- ReDoc : `/api/redoc`
+- OpenAPI JSON : `/api/openapi.json`

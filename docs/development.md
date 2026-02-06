@@ -1,156 +1,156 @@
-# Development Guide
+# Guide de Développement
 
-This guide provides information for developers who want to contribute to the Character Traits Extractor project.
+Ce guide fournit des informations pour les développeurs qui souhaitent contribuer au projet Extracteur de Traits de Caractère.
 
-## Development Environment Setup
+## Configuration de l'Environnement de Développement
 
-### 1. Clone the repository
+### 1. Cloner le dépôt
 
 ```bash
 git clone https://github.com/yourusername/character-traits-extractor.git
 cd character-traits-extractor
 ```
 
-### 2. Create a virtual environment
+### 2. Créer un environnement virtuel
 
 ```bash
 python -m venv venv
 ```
 
-Activate the virtual environment:
+Activer l'environnement virtuel :
 
-- On Windows:
+- Sur Windows :
   ```bash
   venv\Scripts\activate
   ```
 
-- On macOS/Linux:
+- Sur macOS/Linux :
   ```bash
   source venv/bin/activate
   ```
 
-### 3. Install development dependencies
+### 3. Installer les dépendances de développement
 
 ```bash
 pip install -r requirements-dev.txt
 ```
 
-This includes all regular dependencies plus development tools like pytest, black, and isort.
+Cela inclut toutes les dépendances régulières plus les outils de développement comme pytest, black et isort.
 
-## Project Structure
+## Structure du Projet
 
 ```
-character-traits-extractor/
-├── .github/            # GitHub workflows for CI/CD
+extracteur-traits-caractere/
+├── .github/            # Workflows GitHub pour CI/CD
 ├── docs/               # Documentation
-├── src/                # Source code
-│   ├── api/            # API endpoints
-│   ├── models/         # Pydantic models
-│   ├── services/       # Business logic
-│   └── utils/          # Utilities and helpers
-├── tests/              # Test files
-├── Dockerfile          # Docker configuration
-├── requirements.txt    # Production dependencies
-└── requirements-dev.txt # Development dependencies
+├── src/                # Code source
+│   ├── api/            # Points de terminaison API
+│   ├── models/         # Modèles Pydantic
+│   ├── services/       # Logique métier
+│   └── utils/          # Utilitaires et assistants
+├── tests/              # Fichiers de test
+├── Dockerfile          # Configuration Docker
+├── requirements.txt    # Dépendances de production
+└── requirements-dev.txt # Dépendances de développement
 ```
 
-## Running the Application Locally
+## Exécution de l'Application en Local
 
-To run the application in development mode:
+Pour exécuter l'application en mode développement :
 
 ```bash
 uvicorn src.api.api:app --reload --host 0.0.0.0 --port 8000
 ```
 
-The `--reload` flag enables auto-reload on code changes.
+L'option `--reload` permet le rechargement automatique lors des modifications du code.
 
-## Testing
+## Tests
 
-### Running Tests
+### Exécution des Tests
 
-Run all tests with pytest:
+Exécuter tous les tests avec pytest :
 
 ```bash
 pytest
 ```
 
-Run tests with coverage report:
+Exécuter les tests avec rapport de couverture :
 
 ```bash
 pytest --cov=src tests/
 ```
 
-### Adding Tests
+### Ajout de Tests
 
-When adding new features, please also add corresponding tests:
+Lors de l'ajout de nouvelles fonctionnalités, veuillez également ajouter les tests correspondants :
 
-- Unit tests should go in the `tests/` directory
-- Test files should match the pattern `test_*.py`
-- Use pytest fixtures for common test setups
-- Mock external dependencies to ensure tests run quickly and reliably
+- Les tests unitaires doivent être placés dans le répertoire `tests/`
+- Les fichiers de test doivent correspondre au modèle `test_*.py`
+- Utilisez les fixtures pytest pour les configurations de test communes
+- Moquez les dépendances externes pour garantir que les tests s'exécutent rapidement et de manière fiable
 
-## Code Style
+## Style de Code
 
-This project follows PEP 8 style guidelines. We use the following tools to maintain code quality:
+Ce projet suit les directives de style PEP 8. Nous utilisons les outils suivants pour maintenir la qualité du code :
 
-- **Black**: Code formatter
+- **Black** : Formateur de code
   ```bash
   black src/ tests/
   ```
 
-- **isort**: Import sorter
+- **isort** : Trieur d'imports
   ```bash
   isort src/ tests/
   ```
 
-- **Flake8**: Linter
+- **Flake8** : Linter
   ```bash
   flake8 src/ tests/
   ```
 
-## Git Workflow
+## Workflow Git
 
-1. Create a new branch for your feature or bugfix:
+1. Créez une nouvelle branche pour votre fonctionnalité ou correction de bug :
    ```bash
-   git checkout -b feature/your-feature-name
+   git checkout -b feature/nom-de-votre-fonctionnalite
    ```
 
-2. Make your changes and commit with descriptive messages:
+2. Effectuez vos modifications et committez avec des messages descriptifs :
    ```bash
-   git commit -m "Add trait extraction for emotional characteristics"
+   git commit -m "Ajouter l'extraction de traits pour les caractéristiques émotionnelles"
    ```
 
-3. Push your branch:
+3. Poussez votre branche :
    ```bash
-   git push origin feature/your-feature-name
+   git push origin feature/nom-de-votre-fonctionnalite
    ```
 
-4. Create a pull request on GitHub
+4. Créez une pull request sur GitHub
 
-## CI/CD Pipeline
+## Pipeline CI/CD
 
-The project uses GitHub Actions for continuous integration and deployment:
+Le projet utilise GitHub Actions pour l'intégration et le déploiement continus :
 
-1. **Testing**: Runs all tests and checks code style
-2. **Building**: Builds the Docker image
-3. **Publishing**: Publishes the image to GitHub Packages
-4. **Deployment**: Deploys to the target environment (if applicable)
+1. **Tests** : Exécute tous les tests et vérifie le style de code
+2. **Construction** : Construit l'image Docker
+3. **Publication** : Publie l'image sur GitHub Packages
+4. **Déploiement** : Déploie dans l'environnement cible (le cas échéant)
 
-The CI/CD configuration is located in `.github/workflows/`.
+La configuration CI/CD se trouve dans `.github/workflows/`.
 
-## Adding New Models
+## Ajout de Nouveaux Modèles
 
-To add support for a new Hugging Face model:
+Pour ajouter la prise en charge d'un nouveau modèle Hugging Face :
 
-1. Ensure the model is compatible with sequence classification
-2. Add any special tokenization or preprocessing in the `TraitsExtractor` class
-3. Update the documentation to reflect the new model option
-4. Add tests to verify the model works correctly
+1. Assurez-vous que le modèle est compatible avec la classification de séquences
+2. Ajoutez toute tokenisation ou prétraitement spécial dans la classe `TraitsExtractor`
+3. Mettez à jour la documentation pour refléter la nouvelle option de modèle
+4. Ajoutez des tests pour vérifier que le modèle fonctionne correctement
 
 ## Documentation
 
-Please update the documentation when making significant changes:
+Veuillez mettre à jour la documentation lorsque vous apportez des modifications significatives :
 
-- API changes should be reflected in the OpenAPI schema
-- New features should be documented in the appropriate guide
-- Update the README.md if necessary
+- Les modifications de l'API doivent être reflétées dans le schéma OpenAPI
+- Les nouvelles fonctionnalités doivent être documentées dans le guide approprié
+- Mettez à jour le README.md si nécessaire

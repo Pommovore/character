@@ -1,7 +1,7 @@
-"""
-API endpoints for character traits extraction.
 
-This module defines the FastAPI endpoints for extracting character traits from text.
+"""Points de terminaison API pour l'extraction de traits de caractère.
+
+Ce module définit les points de terminaison FastAPI pour extraire les traits de caractère à partir de texte.
 """
 
 import logging
@@ -16,35 +16,35 @@ from src.models.character_traits import (
 )
 from src.services.traits_extractor import TraitsExtractor
 
-# Configure logging
+# Configuration du logging
 logger = logging.getLogger(__name__)
 
-# Create router with versioned prefix
-router = APIRouter(prefix="/api/v1/traits", tags=["Character Traits"])
+# Création du routeur avec préfixe versionné
+router = APIRouter(prefix="/api/v1/traits", tags=["Traits de Caractère"])
 
-# Cache for TraitsExtractor instances to avoid reloading models
+# Cache pour les instances TraitsExtractor afin d'éviter de recharger les modèles
 extractors = {}
 
 
 def get_extractor(model_name: str = "distilbert-base-uncased") -> TraitsExtractor:
     """
-    Factory function to get or create a TraitsExtractor instance.
+    Fonction factory pour obtenir ou créer une instance de TraitsExtractor.
     
     Args:
-        model_name: Name of the Hugging Face model to use
+        model_name: Nom du modèle Hugging Face à utiliser
         
     Returns:
-        TraitsExtractor instance for the specified model
+        Instance de TraitsExtractor pour le modèle spécifié
     """
     if model_name not in extractors:
-        logger.info(f"Creating new extractor for model: {model_name}")
+        logger.info(f"Création d'un nouvel extracteur pour le modèle : {model_name}")
         try:
             extractors[model_name] = TraitsExtractor(model_name)
         except Exception as e:
-            logger.error(f"Failed to create extractor for {model_name}: {str(e)}")
+            logger.error(f"Échec de création de l'extracteur pour {model_name} : {str(e)}")
             raise HTTPException(
                 status_code=500, 
-                detail=f"Failed to load model {model_name}: {str(e)}"
+                detail=f"Échec du chargement du modèle {model_name} : {str(e)}"
             )
     
     return extractors[model_name]
@@ -56,25 +56,25 @@ async def extract_character_traits(
     extractor: TraitsExtractor = Depends(get_extractor)
 ) -> CharacterTraitsResponse:
     """
-    Extract character traits from provided description text.
+    Extrait les traits de caractère à partir du texte de description fourni.
     
     Args:
-        description: Character description input
-        extractor: TraitsExtractor instance (injected by dependency)
+        description: Entrée de description du personnage
+        extractor: Instance de TraitsExtractor (injectée par dépendance)
         
     Returns:
-        CharacterTraitsResponse with extracted traits and summary
+        CharacterTraitsResponse avec traits extraits et résumé
     """
-    logger.info(f"Received trait extraction request with model: {description.model_name}")
+    logger.info(f"Reçu une requête d'extraction de traits avec le modèle : {description.model_name}")
     
     try:
-        # Extract traits from the description
+        # Extraire les traits de la description
         traits = extractor.extract_traits(description.text)
         
-        # Generate a summary based on the extracted traits
+        # Générer un résumé basé sur les traits extraits
         summary = extractor.generate_summary(traits)
         
-        # Return the response
+        # Retourner la réponse
         return CharacterTraitsResponse(
             traits=traits,
             summary=summary,
@@ -82,8 +82,8 @@ async def extract_character_traits(
         )
         
     except Exception as e:
-        logger.error(f"Error processing trait extraction: {str(e)}")
+        logger.error(f"Erreur lors du traitement de l'extraction de traits : {str(e)}")
         raise HTTPException(
             status_code=500,
-            detail=f"Error extracting character traits: {str(e)}"
+            detail=f"Erreur lors de l'extraction des traits de caractère : {str(e)}"
         )

@@ -1,7 +1,6 @@
-"""
-Main entry point for the character traits extraction API service.
+"""Point d'entrée principal pour le service API d'extraction de traits de caractère.
 
-This module provides the entry point for running the API with Uvicorn.
+Ce module fournit le point d'entrée pour exécuter l'API avec Uvicorn.
 """
 
 import logging
@@ -10,7 +9,7 @@ import os
 
 from src.api.api import app
 
-# Configure logging
+# Configuration du logging
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -19,14 +18,14 @@ logger = logging.getLogger(__name__)
 
 
 def main():
-    """Run the API server using Uvicorn."""
-    # Get host and port from environment or use defaults
+    """Exécute le serveur API en utilisant Uvicorn."""
+    # Récupérer l'hôte et le port depuis l'environnement ou utiliser les valeurs par défaut
     host = os.environ.get("HOST", "0.0.0.0")
     port = int(os.environ.get("PORT", "8000"))
     
-    logger.info(f"Starting Character Traits Extractor API on {host}:{port}")
+    logger.info(f"Démarrage de l'API d'extraction de traits de caractère sur {host}:{port}")
     
-    # Run the application with Uvicorn
+    # Exécuter l'application avec Uvicorn
     uvicorn.run(
         "src.api.api:app",
         host=host,

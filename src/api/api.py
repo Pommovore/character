@@ -1,7 +1,6 @@
-"""
-Main API module for the character traits extraction application.
+"""Module API principal pour l'application d'extraction de traits de caractère.
 
-This module configures and creates the FastAPI application instance.
+Ce module configure et crée l'instance de l'application FastAPI.
 """
 
 import logging
@@ -12,7 +11,7 @@ from fastapi.responses import JSONResponse
 from src import __version__
 from src.api.traits_endpoints import router as traits_router
 
-# Configure logging
+# Configuration du logging
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -22,16 +21,16 @@ logger = logging.getLogger(__name__)
 
 def create_application() -> FastAPI:
     """
-    Create and configure the FastAPI application.
+    Crée et configure l'application FastAPI.
     
     Returns:
-        Configured FastAPI application instance
+        Instance d'application FastAPI configurée
     """
     app = FastAPI(
-        title="Character Traits Extractor",
+        title="Extracteur de Traits de Caractère",
         description=(
-            "API for extracting character traits from textual descriptions "
-            "using Hugging Face transformer models."
+            "API pour extraire les traits de caractère à partir de descriptions textuelles "
+            "en utilisant les modèles transformer de Hugging Face."
         ),
         version=__version__,
         docs_url="/api/docs",
@@ -39,35 +38,35 @@ def create_application() -> FastAPI:
         openapi_url="/api/openapi.json",
     )
     
-    # Add CORS middleware
+    # Ajouter le middleware CORS
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],  # In production, specify the allowed origins
+        allow_origins=["*"],  # En production, spécifiez les origines autorisées
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
     )
     
-    # Include routers
+    # Inclure les routeurs
     app.include_router(traits_router)
     
-    # Add health check endpoint
-    @app.get("/health", tags=["Health"])
+    # Ajouter le point de terminaison de vérification de santé
+    @app.get("/health", tags=["Santé"])
     async def health_check():
-        """Health check endpoint."""
-        return {"status": "healthy", "version": __version__}
+        """Point de terminaison de vérification de santé."""
+        return {"status": "en bonne santé", "version": __version__}
     
-    # Global exception handler
+    # Gestionnaire d'exceptions global
     @app.exception_handler(Exception)
     async def global_exception_handler(request, exc):
-        logger.error(f"Unhandled exception: {str(exc)}")
+        logger.error(f"Exception non gérée : {str(exc)}")
         return JSONResponse(
             status_code=500,
-            content={"detail": "An unexpected error occurred."}
+            content={"detail": "Une erreur inattendue s'est produite."}
         )
     
     return app
 
 
-# Create the application instance
+# Créer l'instance de l'application
 app = create_application()

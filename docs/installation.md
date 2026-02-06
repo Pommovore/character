@@ -1,86 +1,86 @@
-# Installation Guide
+# Guide d'Installation
 
-This guide explains how to install and set up the Character Traits Extractor application.
+Ce guide explique comment installer et configurer l'application Extracteur de Traits de Caractère.
 
-## Prerequisites
+## Prérequis
 
-- Python 3.8 or higher
-- pip (Python package installer)
-- Docker (optional, for containerization)
+- Python 3.8 ou supérieur
+- pip (gestionnaire de paquets Python)
+- Docker (optionnel, pour la conteneurisation)
 
-## Local Installation
+## Installation locale
 
-### 1. Clone the repository
+### 1. Cloner le dépôt
 
 ```bash
 git clone https://github.com/yourusername/character-traits-extractor.git
 cd character-traits-extractor
 ```
 
-### 2. Create a virtual environment (recommended)
+### 2. Créer un environnement virtuel (recommandé)
 
 ```bash
 python -m venv venv
 ```
 
-Activate the virtual environment:
+Activer l'environnement virtuel :
 
-- On Windows:
+- Sur Windows :
   ```bash
   venv\Scripts\activate
   ```
 
-- On macOS/Linux:
+- Sur macOS/Linux :
   ```bash
   source venv/bin/activate
   ```
 
-### 3. Install dependencies
+### 3. Installer les dépendances
 
 ```bash
 pip install -r requirements.txt
 ```
 
-## Running with Docker
+## Exécution avec Docker
 
-### 1. Build the Docker image
-
-```bash
-docker build -t character-traits-extractor .
-```
-
-### 2. Run the container
+### 1. Construire l'image Docker
 
 ```bash
-docker run -p 8000:8000 character-traits-extractor
+docker build -t extracteur-traits-caractere .
 ```
 
-The API will be available at `http://localhost:8000`.
+### 2. Exécuter le conteneur
 
-## Environment Variables
+```bash
+docker run -p 8000:8000 extracteur-traits-caractere
+```
 
-The application can be configured using the following environment variables:
+L'API sera disponible à l'adresse `http://localhost:8000`.
 
-| Variable   | Description                          | Default     |
-|------------|--------------------------------------|-------------|
-| `HOST`     | Host to bind the server to          | `0.0.0.0`   |
-| `PORT`     | Port to run the server on           | `8000`      |
-| `LOG_LEVEL`| Logging level (INFO, DEBUG, etc.)   | `INFO`      |
+## Variables d'Environnement
 
-## Verifying Installation
+L'application peut être configurée à l'aide des variables d'environnement suivantes :
 
-To verify that the application is running correctly:
+| Variable   | Description                                | Valeur par défaut |
+|------------|--------------------------------------------|-------------------|
+| `HOST`     | Hôte sur lequel lier le serveur           | `0.0.0.0`         |
+| `PORT`     | Port sur lequel exécuter le serveur       | `8000`            |
+| `LOG_LEVEL`| Niveau de journalisation (INFO, DEBUG, etc.) | `INFO`          |
 
-1. Access the health check endpoint:
+## Vérification de l'Installation
+
+Pour vérifier que l'application fonctionne correctement :
+
+1. Accédez au point de terminaison de vérification de santé :
    ```
    GET http://localhost:8000/health
    ```
 
-2. Check the API documentation:
+2. Consultez la documentation de l'API :
    ```
    http://localhost:8000/api/docs
    ```
 
-## Next Steps
+## Étapes suivantes
 
-Once the application is installed and running, see the [Usage Guide](./usage.md) for information on how to use the API.
+Une fois l'application installée et en cours d'exécution, consultez le [Guide d'utilisation](./usage.md) pour obtenir des informations sur l'utilisation de l'API.

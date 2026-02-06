@@ -1,7 +1,6 @@
-"""
-Tests for the Character Traits API endpoints.
+"""Tests pour les points de terminaison de l'API de traits de caractère.
 
-This module contains tests for the API endpoints to verify correct behavior.
+Ce module contient des tests pour les points de terminaison de l'API afin de vérifier leur bon comportement.
 """
 
 import pytest
@@ -14,7 +13,7 @@ from src.models.character_traits import CharacterTrait
 
 @pytest.fixture
 def test_app():
-    """Create a test client for the FastAPI app."""
+    """Crée un client de test pour l'application FastAPI."""
     app = create_application()
     client = TestClient(app)
     return client
@@ -22,61 +21,61 @@ def test_app():
 
 @pytest.fixture
 def mock_extractor():
-    """Create a mock TraitsExtractor for API tests."""
+    """Crée un mock TraitsExtractor pour les tests API."""
     mock = MagicMock()
     mock.extract_traits.return_value = [
-        CharacterTrait(trait="Courageous", score=0.9, category="Personality"),
-        CharacterTrait(trait="Intelligent", score=0.8, category="Personality"),
+        CharacterTrait(trait="Courageux", score=0.9, category="Personnalité"),
+        CharacterTrait(trait="Intelligent", score=0.8, category="Personnalité"),
     ]
-    mock.generate_summary.return_value = "This character is primarily characterized by Courageous (Personality) and Intelligent (Personality)."
+    mock.generate_summary.return_value = "Ce personnage est principalement caractérisé par Courageux (Personnalité) et Intelligent (Personnalité)."
     return mock
 
 
 @patch("src.api.traits_endpoints.get_extractor")
 def test_extract_traits_endpoint(mock_get_extractor, mock_extractor, test_app):
-    """Test the traits extraction endpoint."""
-    # Arrange
+    """Teste le point de terminaison d'extraction de traits."""
+    # Préparation
     mock_get_extractor.return_value = mock_extractor
     
-    # Act
+    # Action
     response = test_app.post(
         "/api/v1/traits/extract",
-        json={"text": "Harry Potter is a brave young wizard."}
+        json={"text": "Harry Potter est un jeune sorcier courageux."}
     )
     
-    # Assert
+    # Vérification
     assert response.status_code == 200
     data = response.json()
     assert len(data["traits"]) == 2
-    assert data["traits"][0]["trait"] == "Courageous"
+    assert data["traits"][0]["trait"] == "Courageux"
     assert data["traits"][0]["score"] == 0.9
     assert data["summary"] is not None
-    assert "Courageous" in data["summary"]
+    assert "Courageux" in data["summary"]
 
 
 @patch("src.api.traits_endpoints.get_extractor")
 def test_extract_traits_with_short_text(mock_get_extractor, mock_extractor, test_app):
-    """Test the traits extraction endpoint with text that's too short."""
-    # Arrange
+    """Teste le point de terminaison d'extraction de traits avec un texte trop court."""
+    # Préparation
     mock_get_extractor.return_value = mock_extractor
     
-    # Act
+    # Action
     response = test_app.post(
         "/api/v1/traits/extract",
-        json={"text": "Too short"}
+        json={"text": "Trop court"}
     )
     
-    # Assert
-    assert response.status_code == 422  # Validation error
+    # Vérification
+    assert response.status_code == 422  # Erreur de validation
 
 
 def test_health_endpoint(test_app):
-    """Test the health check endpoint."""
-    # Act
+    """Teste le point de terminaison de vérification de santé."""
+    # Action
     response = test_app.get("/health")
     
-    # Assert
+    # Vérification
     assert response.status_code == 200
     data = response.json()
-    assert data["status"] == "healthy"
+    assert data["status"] == "en bonne santé"
     assert "version" in data

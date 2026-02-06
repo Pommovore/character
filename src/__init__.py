@@ -1,8 +1,7 @@
-"""
-Character Traits Extractor Application.
+"""Application d'extraction de traits de caractère.
 
-This application provides an API to extract character traits from textual descriptions
-using Hugging Face transformer models.
+Cette application fournit une API pour extraire les traits de caractère à partir de descriptions textuelles
+en utilisant les modèles transformer de Hugging Face.
 """
 
 __version__ = "0.1.0"
