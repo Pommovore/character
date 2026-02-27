@@ -1,0 +1,2 @@
+- [Généralités](docs/README.md) - Présentation du projet
+- [Architecture](docs/ARCHITECTURE.md) - Architecture et fonctions
