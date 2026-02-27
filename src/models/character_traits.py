@@ -15,7 +15,7 @@ class CharacterDescription(BaseModel):
     directive: Optional[str] = Field(None, description="Directive ou recommandation pour guider l'analyse")
     request_id: str = Field(..., description="Identifiant unique de la demande")
     model_name: Optional[str] = Field(
-        "distilbert-base-uncased",
+        None,
         description="Modèle Hugging Face à utiliser pour l'extraction de traits"
     )
 

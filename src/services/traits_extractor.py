@@ -1,131 +1,121 @@
-"""Service d'extraction de traits utilisant les modèles Hugging Face.
+"""Service d'extraction de traits utilisant l'API d'Inference Hugging Face.
 
-Ce module fournit des fonctionnalités pour extraire les traits de caractère à partir de descriptions textuelles
-en utilisant des modèles transformer pré-entraînés de Hugging Face.
+Ce module interroge des modèles de type Instruct (comme Mistral) via l'API Serverless 
+de Hugging Face pour une analyse sémantique précise et multilingue.
 """
 
 import logging
+import os
+import json
+import re
 from typing import Dict, List, Optional, Tuple
 
-from transformers import AutoTokenizer, AutoModelForSequenceClassification, pipeline
-import numpy as np
-
+from huggingface_hub import InferenceClient
 from src.models.character_traits import CharacterTrait
 
 # Configuration du logging
 logger = logging.getLogger(__name__)
 
-# Catégories de traits de caractère prédéfinies et traits associés
-TRAIT_CATEGORIES = {
-    "Personnalité": [
-        "Courageux", "Ambitieux", "Intelligent", "Compatissant", "Curieux",
-        "Loyal", "Indépendant", "Créatif", "Responsable", "Optimiste",
-        "Pessimiste", "Prudent", "Aventureux", "Introverti", "Extraverti"
-    ],
-    "Valeurs": [
-        "Honnête", "Fiable", "Juste", "Honorable", "Respectueux",
-        "Généreux", "Égoïste", "Matérialiste", "Spirituel", "Traditionnel"
-    ],
-    "Émotions": [
-        "Joyeux", "Craintif", "Colérique", "Mélancolique", "Serein",
-        "Anxieux", "Passionné", "Apathique", "Enthousiaste", "Jaloux"
-    ]
-}
-
 
 class TraitsExtractor:
-    """Service pour extraire les traits de caractère à partir de descriptions textuelles."""
+    """Service pour extraire les traits de caractère via LLM."""
 
-    def __init__(self, model_name: str = "distilbert-base-uncased"):
+    def __init__(self, model_name: Optional[str] = None):
         """
-        Initialise l'extracteur de traits avec un modèle spécifique.
+        Initialise l'extracteur de traits.
 
         Args:
-            model_name: Nom du modèle Hugging Face à utiliser pour l'extraction
+            model_name: Nom du modèle Hugging Face (optionnel, sinon utilise HF_MODEL_NAME)
         """
-        self.model_name = model_name
-        logger.info(f"Initialisation de TraitsExtractor avec le modèle : {model_name}")
+        self.token = os.environ.get("HF_TOKEN")
+        self.model_name = model_name or os.environ.get("HF_MODEL_NAME", "mistralai/Mistral-7B-Instruct-v0.3")
         
-        try:
-            self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-            self.model = AutoModelForSequenceClassification.from_pretrained(model_name)
-            
-            # Pour la démonstration, nous utilisons un pipeline de classification de texte
-            # Dans une application réelle, vous utiliseriez un modèle plus spécifique ou affiné
-            self.classifier = pipeline(
-                "zero-shot-classification", 
-                model=self.model_name,
-                tokenizer=self.tokenizer
-            )
-            logger.info(f"Modèle chargé avec succès : {model_name}")
-        except Exception as e:
-            logger.error(f"Échec du chargement du modèle {model_name} : {str(e)}")
-            raise
+        if not self.token:
+            logger.warning("HF_TOKEN non défini. L'extraction risque d'échouer sur l'API Serverless.")
+        
+        logger.info(f"Initialisation de TraitsExtractor avec le modèle : {self.model_name}")
+        self.client = InferenceClient(model=self.model_name, token=self.token)
 
     def extract_traits(self, text: str, directive: Optional[str] = None) -> List[CharacterTrait]:
         """
-        Extrait les traits de caractère à partir de la description textuelle fournie.
+        Extrait les traits de caractère en interrogeant le LLM via un prompt structuré.
 
         Args:
             text: Texte de description du personnage
+            directive: Instructions supplémentaires
 
         Returns:
-            Liste d'objets CharacterTrait avec noms de traits et scores de confiance
+            Liste d'objets CharacterTrait
         """
-        logger.info(f"Extraction des traits à partir d'un texte de longueur : {len(text)}")
+        logger.info(f"Extraction des traits (LLM) pour un texte de {len(text)} caractères")
         
+        # Préparation du prompt système pour forcer le JSON
+        system_prompt = (
+            "Tu es un expert en analyse littéraire et psychologique de personnages. "
+            "Ta tâche est d'extraire les traits de caractère (personnalité, valeurs, émotions) du texte fourni. "
+            "Ignore les descriptions purement physiques. "
+            "Réponds UNIQUEMENT par un objet JSON au format suivant :\n"
+            '{"traits": [{"trait": "Nom du trait", "score": 0.95, "category": "Personnalité"}]}'
+        )
+        
+        user_content = f"Description : {text}"
         if directive:
-            logger.info(f"Directive fournie pour l'extraction : {directive}")
-            # Dans une implémentation réelle, nous utiliserions la directive pour guider le modèle
-            # Par exemple, en l'ajoutant au contexte ou en ajustant les paramètres du modèle
-        
-        all_traits = []
-        for category, traits in TRAIT_CATEGORIES.items():
-            try:
-                # Utiliser la classification zero-shot pour identifier les traits dans cette catégorie
-                result = self.classifier(text, traits, multi_label=True)
+            user_content += f"\nDirective spécifique : {directive}"
+
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_content}
+        ]
+
+        try:
+            response = self.client.chat_completion(
+                messages=messages,
+                max_tokens=500,
+                temperature=0.1  # Basse pour la répétabilité et la précision
+            )
+            
+            raw_result = response.choices[0].message.content
+            logger.debug(f"Réponse brute du modèle : {raw_result}")
+            
+            return self._parse_llm_response(raw_result)
+            
+        except Exception as e:
+            logger.error(f"Erreur lors de l'appel à l'API Hugging Face : {str(e)}")
+            # Fallback vers une liste vide ou un trait d'erreur
+            return []
+
+    def _parse_llm_response(self, content: str) -> List[CharacterTrait]:
+        """Tente de parser la réponse JSON du modèle."""
+        try:
+            # Nettoyage minimal pour extraire le JSON si le modèle a ajouté du texte
+            json_match = re.search(r'\{.*\}', content, re.DOTALL)
+            if json_match:
+                content = json_match.group(0)
                 
-                # Traiter les résultats
-                for trait, score in zip(result["labels"], result["scores"]):
-                    # Inclure uniquement les traits avec des scores au-dessus du seuil
-                    if score > 0.3:  
-                        all_traits.append(CharacterTrait(
-                            trait=trait,
-                            score=score,
-                            category=category
-                        ))
-            except Exception as e:
-                logger.error(f"Erreur lors de l'extraction des traits pour la catégorie {category} : {str(e)}")
-        
-        # Trier par score (du plus élevé au plus bas)
-        all_traits.sort(key=lambda x: x.score, reverse=True)
-        logger.info(f"Extraction de {len(all_traits)} traits avec des scores au-dessus du seuil")
-        
-        return all_traits
-    
+            data = json.loads(content)
+            traits_data = data.get("traits", [])
+            
+            results = []
+            for t in traits_data:
+                results.append(CharacterTrait(
+                    trait=t.get("trait", "Inconnu"),
+                    score=float(t.get("score", 0.5)),
+                    category=t.get("category", "Général")
+                ))
+            
+            # Trier par score décroissant
+            results.sort(key=lambda x: x.score, reverse=True)
+            return results
+            
+        except Exception as e:
+            logger.error(f"Erreur de parsing JSON du résultat LLM : {str(e)}")
+            return []
+
     def generate_summary(self, traits: List[CharacterTrait]) -> str:
-        """
-        Génère un résumé du personnage basé sur les traits extraits.
-
-        Args:
-            traits: Liste d'objets CharacterTrait
-
-        Returns:
-            Résumé textuel des principaux traits du personnage
-        """
+        """Génère un résumé textuel basé sur les traits."""
         if not traits:
-            return "Aucun trait de caractère significatif n'a été identifié."
+            return "Aucun trait significatif identifié."
             
-        # Prendre les 5 premiers traits ou tous s'il y en a moins
-        top_traits = traits[:min(5, len(traits))]
-        
-        # Créer le résumé
-        trait_phrases = [f"{t.trait} ({t.category})" for t in top_traits]
-        traits_text = ", ".join(trait_phrases[:-1])
-        if len(trait_phrases) > 1:
-            traits_text += f" and {trait_phrases[-1]}"
-        else:
-            traits_text = trait_phrases[0]
-            
-        summary = f"Ce personnage est principalement caractérisé par {traits_text}."
-        return summary
+        top_traits = traits[:5]
+        traits_str = ", ".join([f"{t.trait} ({t.category})" for t in top_traits])
+        return f"Basé sur l'analyse, ce personnage se distingue par : {traits_str}."

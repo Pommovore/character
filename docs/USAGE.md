@@ -12,7 +12,12 @@ http://<hôte>:<port>/api/v1
 
 ## Authentification
 
-L'API ne nécessite actuellement pas d'authentification. Pour les déploiements en production, il est recommandé de mettre en place un mécanisme d'authentification.
+L'API nécessite une authentification par token pour le point de terminaison d'extraction. Le token peut être fourni de deux manières dans les headers de la requête :
+
+1. **Header standard** : `Authorization: Bearer <votre_token>`
+2. **Header spécifique** : `token: <votre_token>`
+
+Les tokens sont générés par l'administrateur via l'interface d'administration.
 
 ## Extraction des Traits de Caractère
 
@@ -34,10 +39,12 @@ POST /api/v1/traits/extract
 ```
 
 Paramètres :
-- `text` (obligatoire) : La description du personnage à analyser. Doit comporter au moins 10 caractères.
+- `text` (obligatoire) : La description du personnage à analyser. Doit comporter au moins 10 caractères. **Si ce champ contient une URL (http/https), le contenu textuel pointé par l'URL sera automatiquement téléchargé et utilisé pour l'analyse.**
 - `request_id` (obligatoire) : Identifiant unique pour cette demande d'analyse.
 - `directive` (optionnel) : Instructions supplémentaires pour guider l'analyse.
 - `model_name` (optionnel) : Le modèle Hugging Face à utiliser pour l'extraction des traits. Par défaut : "distilbert-base-uncased".
+
+> **Note** : Lorsqu'une URL est fournie, seuls les contenus textuels (text/*, application/json, application/xml) sont acceptés. La taille maximale du contenu téléchargé est de 1 Mo.
 
 ### Format de la Réponse (pour la soumission)
 
@@ -97,16 +104,35 @@ La réponse inclut :
 - `summary` : Un résumé généré des principaux traits de caractère
 - `model_used` : Le nom du modèle utilisé pour l'extraction
 
-### Exemple de Requête cURL pour soumettre une analyse
+### 1. Démarrer le serveur
+```bash
+python run.py
+```
+*Le serveur utilisera le `HOST` et le `PORT` définis dans votre fichier `.env`.*
+
+### 2. Exemples de Requête cURL pour soumettre une analyse
+
+**Option A : Utilisation du header `token` (Recommandé)**
 
 ```bash
 curl -X POST "http://localhost:8000/api/v1/traits/extract" \
      -H "Content-Type: application/json" \
+     -H "token: VOTRE_TOKEN_ICI" \
      -d '{
-           "text": "Harry Potter est un jeune sorcier courageux et loyal qui fait constamment preuve de bravoure face au danger. Malgré son éducation difficile chez les Dursley, il maintient une forte boussole morale et valorise l\'amitié par-dessus tout.",
-           "directive": "Analyser les traits de leadership et de courage",
-           "request_id": "abc-123-xyz",
-           "model_name": "distilbert-base-uncased"
+           "text": "Harry Potter est un jeune sorcier courageux et loyal...",
+           "request_id": "abc-123-xyz"
+         }'
+```
+
+**Option B : Utilisation du header standard `Authorization`**
+
+```bash
+curl -X POST "http://localhost:8000/api/v1/traits/extract" \
+     -H "Content-Type: application/json" \
+     -H "Authorization: Bearer VOTRE_TOKEN_ICI" \
+     -d '{
+           "text": "Harry Potter est un jeune sorcier courageux et loyal...",
+           "request_id": "abc-123-xyz"
          }'
 ```
 

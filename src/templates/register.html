@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block navbar %}{% endblock %}
+
+{% block title %}Inscription — CharacterAI Traits{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-5 col-lg-4">
+        <div class="card bg-dark border-secondary shadow-lg">
+            <div class="card-body p-4">
+                <div class="text-center mb-4">
+                    <i class="bi bi-person-plus display-4 text-primary"></i>
+                    <h2 class="mt-2 fw-bold">Inscription</h2>
+                    <p class="text-muted">Votre compte sera validé par l'administrateur</p>
+                </div>
+
+                {% if error %}
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <i class="bi bi-exclamation-triangle me-2"></i>{{ error }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                {% endif %}
+
+                <form method="POST" action="/register">
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email</label>
+                        <input type="email" class="form-control" id="email" name="email"
+                            value="{{ email|default('', true) }}" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Mot de passe</label>
+                        <input type="password" class="form-control" id="password" name="password" required minlength="8"
+                            placeholder="Minimum 8 caractères">
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="password_confirm" class="form-label">Confirmation</label>
+                        <input type="password" class="form-control" id="password_confirm" name="password_confirm"
+                            required minlength="8">
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-person-plus me-2"></i>S'inscrire
+                    </button>
+                </form>
+
+                <hr class="my-4 border-secondary">
+
+                <div class="text-center">
+                    <a href="/login" class="text-decoration-none">Déjà un compte ? Connectez-vous</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

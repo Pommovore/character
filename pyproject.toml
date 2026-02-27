@@ -1,7 +1,25 @@
 [project]
-name = "charactere"
+name = "character"
 version = "0.1.0"
-description = "Add your description here"
+description = "Extracteur de traits de caractère utilisant des modèles Transformers"
 readme = "README.md"
-requires-python = ">=3.10"
-dependencies = []
+authors = [{ name = "Jack", email = "jack@example.com" }]
+license = { text = "MIT" }
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "pydantic",
+    "transformers",
+    "torch",
+    "numpy",
+    "python-multipart",
+    "huggingface-hub",
+    "httpx",
+    "sqlalchemy",
+    "passlib[bcrypt]",
+    "python-jose[cryptography]",
+    "jinja2",
+    "python-dotenv",
+    "aiohttp",
+]

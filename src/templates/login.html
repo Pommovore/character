@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block navbar %}{% endblock %}
+
+{% block title %}Connexion — CharacterAI Traits{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-5 col-lg-4">
+        <div class="card bg-dark border-secondary shadow-lg">
+            <div class="card-body p-4">
+                <div class="text-center mb-4">
+                    <i class="bi bi-stars display-4 text-primary"></i>
+                    <h2 class="mt-2 fw-bold">Connexion</h2>
+                </div>
+
+                {% if success %}
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <i class="bi bi-check-circle me-2"></i>{{ success }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                {% endif %}
+
+                {% if error %}
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <i class="bi bi-exclamation-triangle me-2"></i>{{ error }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                {% endif %}
+
+                <form method="POST" action="/login">
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email</label>
+                        <input type="email" class="form-control" id="email" name="email" required autofocus>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="password" class="form-label">Mot de passe</label>
+                        <input type="password" class="form-control" id="password" name="password" required>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-box-arrow-in-right me-2"></i>Se connecter
+                    </button>
+                </form>
+
+                <hr class="my-4 border-secondary">
+
+                <div class="text-center">
+                    <a href="/register" class="text-decoration-none">Pas encore de compte ? Inscrivez-vous</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

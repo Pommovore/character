@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% set current_user = user %}
+
+{% block title %}Tableau de bord — CharacterAI Traits{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="fw-bold"><i class="bi bi-speedometer2 me-2"></i>Tableau de bord</h1>
+</div>
+
+<!-- Profil utilisateur -->
+<div class="row g-4 mb-4">
+    <div class="col-md-4">
+        <div class="card bg-dark border-secondary h-100">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-person-circle me-2 text-primary"></i>Mon profil</h5>
+                <hr class="border-secondary">
+                <div class="mb-2">
+                    <span class="text-muted">Email :</span>
+                    <strong>{{ user.email }}</strong>
+                </div>
+                <div class="mb-2">
+                    <span class="text-muted">Statut :</span>
+                    <span class="badge
+                        {% if user.status == 'pending' %}bg-warning text-dark
+                        {% elif user.status == 'normal' %}bg-success
+                        {% elif user.status == 'vip' %}bg-info
+                        {% elif user.status == 'rejected' %}bg-danger
+                        {% elif user.status == 'suspended' %}bg-secondary
+                        {% endif %}">
+                        {{ user.status|upper }}
+                    </span>
+                </div>
+                <div class="mb-2">
+                    <span class="text-muted">Inscrit le :</span>
+                    {{ user.created_at.strftime('%d/%m/%Y') if user.created_at else '—' }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card bg-dark border-secondary h-100">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-key me-2 text-primary"></i>Mon token API</h5>
+                <hr class="border-secondary">
+                {% if active_token %}
+                <div class="mb-2">
+                    <span class="text-muted">Token :</span>
+                    <div class="input-group mt-1">
+                        <input type="text" class="form-control form-control-sm font-monospace" id="token-display"
+                            value="{{ active_token.token }}" readonly>
+                        <button class="btn btn-outline-secondary btn-sm" onclick="copyToken()" title="Copier">
+                            <i class="bi bi-clipboard"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="mb-2">
+                    <span class="text-muted">Source :</span>
+                    <span class="small">{{ active_token.source_string }}</span>
+                </div>
+                {% else %}
+                <div class="text-muted">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Aucun token actif. Contactez l'administrateur.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card bg-dark border-secondary h-100">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-graph-up me-2 text-primary"></i>Utilisation</h5>
+                <hr class="border-secondary">
+                <div class="mb-2">
+                    <span class="text-muted">Requêtes restantes (24h) :</span>
+                    <span id="remaining-requests" class="fw-bold fs-4
+                        {% if remaining_requests > 10 %}text-success
+                        {% elif remaining_requests > 3 %}text-warning
+                        {% else %}text-danger
+                        {% endif %}">
+                        {{ remaining_requests }}
+                    </span>
+                    <span class="text-muted">/ {{ '100' if user.status == 'vip' else '20' }}</span>
+                </div>
+                <div class="progress mt-2" style="height: 8px;">
+                    {% set max_req = 100 if user.status == 'vip' else 20 %}
+                    {% set pct = ((max_req - remaining_requests) / max_req * 100)|int %}
+                    <div class="progress-bar
+                        {% if pct > 80 %}bg-danger{% elif pct > 50 %}bg-warning{% else %}bg-success{% endif %}"
+                        style="width: {{ pct }}%"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- File d'attente en temps réel -->
+<div class="card bg-dark border-secondary">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">
+            <i class="bi bi-list-ol me-2"></i>Mes requêtes
+            <span id="queue-indicator" class="ms-2">
+                <span class="spinner-grow spinner-grow-sm text-primary" role="status"></span>
+                <small class="text-muted">Temps réel</small>
+            </span>
+        </h5>
+        <span class="badge bg-secondary" id="queue-length">File : 0</span>
+    </div>
+    <div class="card-body p-0">
+        <!-- Requête en cours -->
+        <div id="processing-section" class="d-none border-bottom border-secondary p-3 bg-dark">
+            <div class="d-flex align-items-center">
+                <div class="spinner-border spinner-border-sm text-primary me-3" role="status"></div>
+                <div>
+                    <strong class="text-primary">En cours de traitement</strong>
+                    <div class="small text-muted" id="processing-id"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Liste des requêtes -->
+        <div class="table-responsive">
+            <table class="table table-dark table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>ID requête</th>
+                        <th>Statut</th>
+                        <th>Position</th>
+                    </tr>
+                </thead>
+                <tbody id="queue-table-body">
+                    {% for item in queue_items %}
+                    <tr>
+                        <td class="font-monospace small">{{ item.request_id }}</td>
+                        <td>
+                            <span class="badge
+                                {% if item.status == 'waiting' %}bg-warning text-dark
+                                {% elif item.status == 'processing' %}bg-primary
+                                {% elif item.status == 'completed' %}bg-success
+                                {% elif item.status == 'failed' %}bg-danger
+                                {% endif %}">
+                                {{ item.status }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if item.position >= 0 %}#{{ item.position + 1 }}{% else %}—{% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% if not queue_items %}
+                    <tr id="no-requests-row">
+                        <td colspan="3" class="text-center text-muted py-4">
+                            <i class="bi bi-inbox display-6 d-block mb-2"></i>
+                            Aucune requête pour le moment
+                        </td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="/static/js/dashboard.js"></script>
+{% endblock %}

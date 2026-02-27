@@ -2,23 +2,25 @@
 """Points de terminaison API pour l'extraction de traits de caractère.
 
 Ce module définit les points de terminaison FastAPI pour extraire les traits de caractère à partir de texte.
+Les requêtes sont authentifiées par token API et soumises à une file d'attente FIFO.
 """
 
 import logging
-from typing import Optional, Dict
-import asyncio
 
-from fastapi import APIRouter, HTTPException, Depends, Path, Query
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, HTTPException, Depends, Header
+from sqlalchemy.orm import Session
 
+from src.database import get_db
 from src.models.character_traits import (
     CharacterDescription,
     CharacterTraitsResponse,
     CharacterProcessingStatus,
-    CharacterRequestId
 )
+from src.models.user import RequestLog
 from src.services.traits_extractor import TraitsExtractor
-from src.services.character_store import CharacterStore
+from src.services.auth_service import validate_api_token
+from src.services.request_queue import RequestQueue, QueueItem
+from src.utils.url_fetcher import is_url, fetch_text_content
 
 # Configuration du logging
 logger = logging.getLogger(__name__)
@@ -26,135 +28,137 @@ logger = logging.getLogger(__name__)
 # Création du routeur avec préfixe versionné
 router = APIRouter(prefix="/api/v1/traits", tags=["Traits de Caractère"])
 
-# Cache pour les instances TraitsExtractor afin d'éviter de recharger les modèles
-extractors = {}
-
-# Service de stockage des résultats
-character_store = CharacterStore()
-
-
-def get_extractor(model_name: str = "distilbert-base-uncased") -> TraitsExtractor:
-    """
-    Fonction factory pour obtenir ou créer une instance de TraitsExtractor.
-    
-    Args:
-        model_name: Nom du modèle Hugging Face à utiliser
-        
-    Returns:
-        Instance de TraitsExtractor pour le modèle spécifié
-    """
-    if model_name not in extractors:
-        logger.info(f"Création d'un nouvel extracteur pour le modèle : {model_name}")
-        try:
-            extractors[model_name] = TraitsExtractor(model_name)
-        except Exception as e:
-            logger.error(f"Échec de création de l'extracteur pour {model_name} : {str(e)}")
-            raise HTTPException(
-                status_code=500, 
-                detail=f"Échec du chargement du modèle {model_name} : {str(e)}"
-            )
-    
-    return extractors[model_name]
-
 
 @router.post("/extract", response_model=CharacterProcessingStatus, status_code=202)
 async def extract_character_traits(
     description: CharacterDescription,
-    extractor: TraitsExtractor = Depends(get_extractor)
+    authorization: str = Header(None, alias="Authorization"),
+    token: str = Header(None, alias="token"),
+    db: Session = Depends(get_db),
 ) -> CharacterProcessingStatus:
     """
     Lance l'extraction asynchrone des traits de caractère à partir du texte fourni.
-    
+
+    Requiert un token API valide dans le header 'token' ou 'Authorization: Bearer <token>'.
+    Les requêtes sont soumises à une file d'attente FIFO et traitées dans l'ordre.
+
     Args:
         description: Entrée de description du personnage avec identifiant
-        extractor: Instance de TraitsExtractor (injectée par dépendance)
-        
+        authorization: Header Authorization avec le token API
+        token: Header spécifique 'token' avec le token API
+        db: Session de base de données
+
     Returns:
         État du traitement avec identifiant de la demande (HTTP 202 Accepted)
     """
+    # Priorité au header 'token' demandé par l'utilisateur
+    auth_input = token or authorization
+    
+    # Valider le token API et vérifier le rate limit
+    user, api_token = validate_api_token(auth_input, db)
+
     request_id = description.request_id
-    logger.info(f"Reçu une requête d'extraction de traits avec ID: {request_id}, Modèle: {description.model_name}")
-    
-    # Vérifier si cette demande est déjà en cours de traitement ou terminée
-    if character_store.is_request_known(request_id):
-        if character_store.is_request_pending(request_id):
-            return CharacterProcessingStatus(
-                request_id=request_id,
-                status="pending",
-                message="Traitement déjà en cours pour cet ID de requête"
-            )
-        else:
-            return CharacterProcessingStatus(
-                request_id=request_id,
-                status="completed",
-                message="Résultat déjà disponible pour cet ID de requête"
-            )
-    
-    # Fonction de traitement à exécuter de manière asynchrone
-    def process_extraction():
+    logger.info(
+        f"Requête d'extraction reçue — ID: {request_id}, "
+        f"Utilisateur: {user.email}, Modèle: {description.model_name}"
+    )
+
+    # Si le texte est une URL, télécharger le contenu avant traitement
+    text = description.text
+    if is_url(text):
+        logger.info(f"URL détectée dans le champ texte : {text}")
         try:
-            # Extraire les traits de la description
-            traits = extractor.extract_traits(description.text, description.directive)
-            
-            # Générer un résumé basé sur les traits extraits
-            summary = extractor.generate_summary(traits)
-            
-            # Créer la réponse
-            return CharacterTraitsResponse(
-                traits=traits,
-                summary=summary,
-                model_used=description.model_name,
-                request_id=request_id,
-                directive=description.directive,
-                status="completed"
-            )
-        except Exception as e:
-            logger.error(f"Erreur lors du traitement de l'extraction de traits : {str(e)}")
-            # Dans une implémentation complète, nous stockerions l'erreur
-            raise
-    
-    # Lancer le traitement asynchrone
-    character_store.process_async(request_id, process_extraction)
-    
-    # Retourner immédiatement un statut
+            text = await fetch_text_content(text)
+            logger.info(f"Contenu téléchargé avec succès : {len(text)} caractères")
+        except ValueError as e:
+            logger.error(f"Échec du téléchargement du contenu de l'URL : {str(e)}")
+            raise HTTPException(status_code=400, detail=str(e))
+
+    # Enregistrer le log de requête (rate limiting)
+    request_log = RequestLog(
+        user_id=user.id,
+        token_id=api_token.id,
+        request_id=request_id,
+    )
+    db.add(request_log)
+    db.commit()
+
+    # Vérifier si la requête est déjà connue dans la file
+    queue = RequestQueue()
+    existing = queue.get_request_status(request_id)
+    if existing:
+        return CharacterProcessingStatus(
+            request_id=request_id,
+            status=existing["status"],
+            message=f"Requête déjà connue (statut: {existing['status']})"
+        )
+
+    # Ajouter à la file d'attente
+    queue_item = QueueItem(
+        request_id=request_id,
+        user_id=user.id,
+        user_email=user.email,
+        text=text,
+        directive=description.directive,
+        model_name=description.model_name,
+    )
+    position = queue.enqueue(queue_item)
+
+    logger.info(f"Requête {request_id} ajoutée en file d'attente (position: {position})")
+
     return CharacterProcessingStatus(
         request_id=request_id,
         status="pending",
-        message="Traitement lancé avec succès"
+        message=f"Requête ajoutée en file d'attente (position: {position + 1})"
     )
+
 
 @router.get("/get_character/{request_id}", response_model=CharacterTraitsResponse)
 async def get_character_result(request_id: str):
     """
     Récupère le résultat d'une extraction de traits de caractère précédemment demandée.
-    
+
     Args:
         request_id: Identifiant unique de la demande
-        
+
     Returns:
         Résultat de l'extraction avec les traits de caractère
-        
+
     Raises:
         HTTPException: Si l'ID n'est pas connu ou si le traitement est en cours
     """
     logger.info(f"Demande de récupération des résultats pour l'ID: {request_id}")
-    
-    # Vérifier si l'ID est connu
-    if not character_store.is_request_known(request_id):
+
+    queue = RequestQueue()
+    status = queue.get_request_status(request_id)
+
+    if not status:
         logger.warning(f"ID de requête inconnu: {request_id}")
         raise HTTPException(status_code=404, detail="inconnu")
-    
-    # Vérifier si le traitement est terminé
-    if character_store.is_request_pending(request_id):
+
+    if status["status"] in ("waiting", "processing"):
         logger.info(f"Traitement en cours pour l'ID: {request_id}")
         raise HTTPException(status_code=202, detail="Traitement en cours")
-    
-    # Récupérer le résultat
-    result = character_store.get_result(request_id)
+
+    if status["status"] == "failed":
+        logger.error(f"Traitement échoué pour l'ID: {request_id}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Le traitement a échoué : {status.get('error', 'erreur inconnue')}"
+        )
+
+    # Construire la réponse à partir du résultat
+    result = status.get("result")
     if result is None:
-        # Cas théoriquement impossible si la vérification précédente est correcte
-        logger.error(f"Résultat introuvable pour l'ID: {request_id} alors que le traitement est marqué comme terminé")
-        raise HTTPException(status_code=500, detail="Erreur interne: résultat introuvable")
-    
-    logger.info(f"Résultat trouvé pour l'ID: {request_id}")
-    return result
+        raise HTTPException(status_code=500, detail="Résultat introuvable")
+
+    from src.models.character_traits import CharacterTrait
+
+    traits = [CharacterTrait(**t) for t in result["traits"]]
+    return CharacterTraitsResponse(
+        traits=traits,
+        summary=result["summary"],
+        model_used=result["model_used"],
+        request_id=request_id,
+        status="completed",
+    )

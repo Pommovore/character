@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+{% set current_user = admin %}
+
+{% block title %}Administration — CharacterAI Traits{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="fw-bold"><i class="bi bi-gear me-2"></i>Administration</h1>
+    <span class="badge bg-primary fs-6">{{ admin.email }}</span>
+</div>
+
+<!-- Statistiques -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card bg-dark border-secondary text-center p-3">
+            <div class="display-6 fw-bold text-primary" id="stat-total">{{ users|length }}</div>
+            <div class="text-muted">Utilisateurs</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-dark border-secondary text-center p-3">
+            <div class="display-6 fw-bold text-warning" id="stat-pending">
+                {{ users|selectattr('user.status', 'equalto', 'pending')|list|length }}
+            </div>
+            <div class="text-muted">En attente</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-dark border-secondary text-center p-3">
+            <div class="display-6 fw-bold text-success" id="stat-active">
+                {{ users|selectattr('user.status', 'in', ['normal', 'vip'])|list|length }}
+            </div>
+            <div class="text-muted">Actifs</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-dark border-secondary text-center p-3">
+            <div class="display-6 fw-bold text-info" id="stat-vip">
+                {{ users|selectattr('user.status', 'equalto', 'vip')|list|length }}
+            </div>
+            <div class="text-muted">VIP</div>
+        </div>
+    </div>
+</div>
+
+<!-- Liste des utilisateurs -->
+<div class="card bg-dark border-secondary">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="bi bi-people me-2"></i>Utilisateurs</h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-dark table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Email</th>
+                        <th>Statut</th>
+                        <th>Rôle</th>
+                        <th>Token</th>
+                        <th>Source du token</th>
+                        <th>Inscrit le</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in users %}
+                    <tr id="user-row-{{ item.user.id }}">
+                        <td>
+                            <strong>{{ item.user.email }}</strong>
+                        </td>
+                        <td>
+                            <span id="status-badge-{{ item.user.id }}" class="badge
+                                {% if item.user.status == 'pending' %}bg-warning text-dark
+                                {% elif item.user.status == 'normal' %}bg-success
+                                {% elif item.user.status == 'vip' %}bg-info
+                                {% elif item.user.status == 'rejected' %}bg-danger
+                                {% elif item.user.status == 'suspended' %}bg-secondary
+                                {% endif %}">
+                                {{ item.user.status|upper }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if item.user.role == 'admin' %}
+                            <span class="badge bg-primary">Admin</span>
+                            {% else %}
+                            <span class="text-muted">Utilisateur</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span id="token-display-{{ item.user.id }}" class="font-monospace small">
+                                {% if item.tokens %}
+                                {% for t in item.tokens if t.is_active %}
+                                {{ t.token[:16] }}…
+                                {% endfor %}
+                                {% else %}
+                                <span class="text-muted">—</span>
+                                {% endif %}
+                            </span>
+                        </td>
+                        <td>
+                            <span id="token-source-{{ item.user.id }}" class="small text-muted">
+                                {% if item.tokens %}
+                                {% for t in item.tokens if t.is_active %}
+                                {{ t.source_string }}
+                                {% endfor %}
+                                {% else %}
+                                —
+                                {% endif %}
+                            </span>
+                        </td>
+                        <td class="text-muted small">
+                            {{ item.user.created_at.strftime('%d/%m/%Y %H:%M') if item.user.created_at else '—' }}
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm" role="group">
+                                {% if item.user.role != 'admin' %}
+                                <!-- Boutons de validation -->
+                                {% if item.user.status == 'pending' or item.user.status == 'rejected' or
+                                item.user.status == 'suspended' %}
+                                <button class="btn btn-outline-success btn-sm" title="Valider Normal"
+                                    onclick="validateUser({{ item.user.id }}, 'normal')">
+                                    <i class="bi bi-check-lg"></i> Normal
+                                </button>
+                                <button class="btn btn-outline-info btn-sm" title="Valider VIP"
+                                    onclick="validateUser({{ item.user.id }}, 'vip')">
+                                    <i class="bi bi-star"></i> VIP
+                                </button>
+                                {% endif %}
+
+                                {% if item.user.status == 'pending' %}
+                                <button class="btn btn-outline-danger btn-sm" title="Rejeter"
+                                    onclick="validateUser({{ item.user.id }}, 'rejected')">
+                                    <i class="bi bi-x-lg"></i> Rejeté
+                                </button>
+                                {% endif %}
+
+                                {% if item.user.status in ['normal', 'vip'] %}
+                                <button class="btn btn-outline-warning btn-sm" title="Suspendre"
+                                    onclick="suspendUser({{ item.user.id }})">
+                                    <i class="bi bi-pause-circle"></i>
+                                </button>
+                                {% endif %}
+                                {% endif %}
+
+                                <!-- Bouton jeton -->
+                                <button class="btn btn-outline-light btn-sm" title="Générer un jeton"
+                                    data-bs-toggle="modal" data-bs-target="#tokenModal"
+                                    onclick="openTokenModal({{ item.user.id }}, '{{ item.user.email }}')">
+                                    <i class="bi bi-key"></i> Jeton
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de génération de token -->
+<div class="modal fade" id="tokenModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content bg-dark border-secondary">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title">
+                    <i class="bi bi-key me-2"></i>Générer un jeton pour
+                    <span id="modal-user-email" class="text-primary"></span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="modal-user-id">
+
+                <div class="mb-3">
+                    <label for="token-source" class="form-label">Chaîne source</label>
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="token-source"
+                            placeholder="Entrez une chaîne quelconque…">
+                        <button class="btn btn-outline-secondary" type="button" id="btn-random"
+                            onclick="generateRandomSource()">
+                            <i class="bi bi-shuffle me-1"></i>Random
+                        </button>
+                    </div>
+                    <div class="form-text">La chaîne sera utilisée pour générer le token</div>
+                </div>
+
+                <div id="token-result" class="d-none">
+                    <div class="alert alert-success d-flex justify-content-between align-items-start">
+                        <div class="flex-grow-1 me-2">
+                            <strong>Token généré :</strong>
+                            <code id="token-value" class="d-block mt-1 text-break"></code>
+                        </div>
+                        <button class="btn btn-sm btn-outline-success" onclick="copyToken()" title="Copier">
+                            <i class="bi bi-clipboard"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+                <button type="button" class="btn btn-primary" id="btn-generate" onclick="generateToken()">
+                    <i class="bi bi-key me-1"></i>Générer le jeton
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="/static/js/admin.js"></script>
+{% endblock %}

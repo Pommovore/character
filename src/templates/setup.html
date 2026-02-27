@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block navbar %}{% endblock %}
+
+{% block title %}Configuration initiale — CharacterAI Traits{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-6 col-lg-5">
+        <div class="card bg-dark border-secondary shadow-lg">
+            <div class="card-body p-4">
+                <div class="text-center mb-4">
+                    <i class="bi bi-stars display-4 text-primary"></i>
+                    <h2 class="mt-2 fw-bold">Configuration initiale</h2>
+                    <p class="text-muted">Configurez votre instance CharacterAI Traits</p>
+                </div>
+
+                {% if error %}
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <i class="bi bi-exclamation-triangle me-2"></i>{{ error }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                {% endif %}
+
+                <form method="POST" action="/setup">
+                    <h5 class="text-primary mb-3"><i class="bi bi-person-badge me-2"></i>Compte administrateur</h5>
+
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email administrateur</label>
+                        <input type="email" class="form-control" id="email" name="email"
+                            value="{{ email|default('', true) }}" required placeholder="admin@example.com">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Mot de passe</label>
+                        <input type="password" class="form-control" id="password" name="password" required minlength="8"
+                            placeholder="Minimum 8 caractères">
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="password_confirm" class="form-label">Confirmation du mot de passe</label>
+                        <input type="password" class="form-control" id="password_confirm" name="password_confirm"
+                            required minlength="8">
+                    </div>
+
+                    <hr class="my-4 border-secondary">
+
+                    <h5 class="text-primary mb-3"><i class="bi bi-gear me-2"></i>Services externes</h5>
+
+                    <div class="mb-3">
+                        <label for="discord_webhook" class="form-label">
+                            Webhook Discord <span class="text-muted">(optionnel)</span>
+                        </label>
+                        <input type="url" class="form-control" id="discord_webhook" name="discord_webhook"
+                            value="{{ discord_webhook|default('', true) }}"
+                            placeholder="https://discord.com/api/webhooks/...">
+                        <div class="form-text">Pour recevoir des notifications sur Discord</div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="hf_token" class="form-label">
+                            Token Hugging Face <span class="text-muted">(optionnel)</span>
+                        </label>
+                        <input type="text" class="form-control" id="hf_token" name="hf_token"
+                            value="{{ hf_token|default('', true) }}" placeholder="hf_...">
+                        <div class="form-text">Pour accéder aux modèles privés ou augmenter les limites</div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100 btn-lg">
+                        <i class="bi bi-rocket-takeoff me-2"></i>Lancer l'installation
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

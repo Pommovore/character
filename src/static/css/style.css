@@ -1,0 +1,123 @@
+/* Styles personnalisés pour CharacterAI Traits */
+
+/* Typographie globale */
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background-color: #1a1d21;
+}
+
+main {
+    flex: 1;
+}
+
+/* Cartes avec effet glassmorphism subtil */
+.card {
+    border-radius: 12px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+    box-shadow: 0 4px 20px rgba(13, 110, 253, 0.1);
+}
+
+/* Badges de statut */
+.badge {
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    padding: 0.4em 0.8em;
+}
+
+/* Boutons */
+.btn {
+    border-radius: 8px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+}
+
+/* Tableau */
+.table-dark {
+    --bs-table-bg: transparent;
+}
+
+.table-dark th {
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.5px;
+    color: #8b949e;
+    border-bottom-width: 2px;
+}
+
+.table-hover > tbody > tr:hover {
+    background-color: rgba(13, 110, 253, 0.05);
+}
+
+/* Indicateur temps réel */
+.spinner-grow-sm {
+    width: 0.5rem;
+    height: 0.5rem;
+}
+
+/* Navbar */
+.navbar-brand {
+    font-size: 1.25rem;
+    letter-spacing: -0.5px;
+}
+
+/* Champs de formulaire */
+.form-control {
+    border-radius: 8px;
+    background-color: #2b3035;
+    border-color: #495057;
+}
+
+.form-control:focus {
+    background-color: #2b3035;
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.15);
+}
+
+/* Progress bar animation */
+.progress-bar {
+    transition: width 0.6s ease;
+}
+
+/* Token display */
+.font-monospace {
+    font-size: 0.85rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .btn-group .btn {
+        font-size: 0.75rem;
+        padding: 0.2rem 0.4rem;
+    }
+
+    .table th,
+    .table td {
+        font-size: 0.85rem;
+        padding: 0.5rem;
+    }
+}
+
+/* Animation d'entrée */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.card {
+    animation: fadeIn 0.4s ease forwards;
+}
+
+.row .col-md-3:nth-child(2) .card { animation-delay: 0.1s; }
+.row .col-md-3:nth-child(3) .card { animation-delay: 0.2s; }
+.row .col-md-3:nth-child(4) .card { animation-delay: 0.3s; }

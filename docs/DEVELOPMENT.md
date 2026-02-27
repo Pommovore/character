@@ -56,10 +56,10 @@ extracteur-traits-caractere/
 
 ## Exécution de l'Application en Local
 
-Pour exécuter l'application en mode développement :
+Pour exécuter l'application en mode développement (utilise la configuration du `.env`) :
 
 ```bash
-uvicorn src.api.api:app --reload --host 0.0.0.0 --port 8000
+python run.py
 ```
 
 L'option `--reload` permet le rechargement automatique lors des modifications du code.
