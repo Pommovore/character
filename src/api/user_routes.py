@@ -9,7 +9,7 @@ import asyncio
 import logging
 import os
 
-from fastapi import APIRouter, Request, Form, Depends, HTTPException
+from fastapi import APIRouter, Request, Form, Depends, HTTPException, BackgroundTasks
 from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
@@ -21,6 +21,7 @@ from src.services.auth_service import (
     get_current_user, get_remaining_requests
 )
 from src.services.request_queue import RequestQueue
+from src.services.discord_service import send_discord_notification
 from src.config import get_available_models
 
 # Configuration du logging
@@ -105,6 +106,7 @@ async def register_page(request: Request):
 @router.post("/register", response_class=HTMLResponse)
 async def register_submit(
     request: Request,
+    background_tasks: BackgroundTasks,
     email: str = Form(...),
     password: str = Form(...),
     password_confirm: str = Form(...),
@@ -143,6 +145,10 @@ async def register_submit(
     db.commit()
 
     logger.info(f"Nouvel utilisateur inscrit (en attente de validation) : {email}")
+    
+    # Envoi de la notification Discord asynchrone
+    discord_msg = f"🔔 **Nouveau compte** en attente de validation : `{email}`\nConnectez-vous à l'administration pour valider cet accès."
+    background_tasks.add_task(send_discord_notification, discord_msg)
 
     return RedirectResponse(url=f"{request.scope.get('root_path', '')}/login?registered=ok", status_code=302)
 

@@ -20,6 +20,7 @@ async function validateUser(userId, status) {
         const response = await fetch(`${APP_PREFIX}/admin/users/${userId}/validate`, {
             method: 'POST',
             body: formData,
+            credentials: 'same-origin'
         });
 
         const data = await response.json();
@@ -47,6 +48,7 @@ async function suspendUser(userId) {
     try {
         const response = await fetch(`${APP_PREFIX}/admin/users/${userId}/suspend`, {
             method: 'POST',
+            credentials: 'same-origin'
         });
 
         const data = await response.json();
@@ -93,6 +95,7 @@ async function generateToken() {
         const response = await fetch(`${APP_PREFIX}/admin/users/${userId}/token`, {
             method: 'POST',
             body: formData,
+            credentials: 'same-origin'
         });
 
         const data = await response.json();
@@ -136,40 +139,13 @@ function copyToken() {
 
 
 /**
- * Génère une chaîne aléatoire et appelle directement l'API random.
+ * Génère une chaîne aléatoire et l'insère dans le champ "Chaîne source".
+ * L'administrateur devra ensuite cliquer sur "Générer le jeton" pour l'enregistrer.
  */
-async function generateRandomSource() {
-    const userId = document.getElementById('modal-user-id').value;
-
-    try {
-        const response = await fetch(`${APP_PREFIX}/admin/users/${userId}/token/random`, {
-            method: 'POST',
-        });
-
-        const data = await response.json();
-
-        if (data.success) {
-            document.getElementById('token-source').value = data.source;
-            document.getElementById('token-value').textContent = data.token;
-            document.getElementById('token-result').classList.remove('d-none');
-
-            // Mettre à jour l'affichage dans le tableau
-            const tokenDisplay = document.getElementById(`token-display-${userId}`);
-            if (tokenDisplay) {
-                tokenDisplay.textContent = data.token.substring(0, 16) + '…';
-            }
-            const tokenSource = document.getElementById(`token-source-${userId}`);
-            if (tokenSource) {
-                tokenSource.textContent = data.source;
-            }
-
-            showToast('Token aléatoire généré avec succès', 'success');
-        } else {
-            showToast(data.detail || 'Erreur', 'danger');
-        }
-    } catch (error) {
-        showToast('Erreur de communication avec le serveur', 'danger');
-    }
+function generateRandomSource() {
+    // Génère une chaîne hexadécimale aléatoire basique de 16 caractères
+    const randomHex = [...Array(16)].map(() => Math.floor(Math.random() * 16).toString(16)).join('');
+    document.getElementById('token-source').value = 'random_' + randomHex;
 }
 
 /**
