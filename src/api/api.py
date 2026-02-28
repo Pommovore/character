@@ -35,13 +35,18 @@ class SetupMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next):
         """Vérifie si le setup est fait, sinon redirige."""
-        # Ne pas rediriger les requêtes vers /setup, /static, /health, /api/docs
-        # Utiliser request.scope['path'] pour être agnostique du root_path (ex: /character)
+        # Nettoyer le chemin brut en supprimant le préfixe si Nginx ne l'a pas fait
         path = request.scope.get('path', '')
+        root_path = request.scope.get('root_path', '')
+        if root_path and path.startswith(root_path):
+            path = path[len(root_path):]
+            if not path.startswith('/'):
+                path = '/' + path
+                
         allowed_paths = ["/setup", "/static", "/health", "/api/docs", "/api/redoc", "/api/openapi.json"]
 
         if not is_setup_done() and not any(path.startswith(p) for p in allowed_paths):
-            return RedirectResponse(url=f"{request.scope.get('root_path', '')}/setup", status_code=302)
+            return RedirectResponse(url=f"{root_path}/setup", status_code=302)
 
         return await call_next(request)
 
