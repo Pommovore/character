@@ -30,5 +30,5 @@ Toutes tes propositions de commandes et ton exécution de code doivent suivre ce
    - Sois concis et privilégie les One-Liners avec `uv run` pour tester des extraits de code.
 
 6. COMMITS :
-   - Ne fais jamais de commit sans que je ne te l'aie demandé.
+   - Ne fais jamais de "git commit" sans que je ne te l'aie demandé.
    
