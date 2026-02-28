@@ -36,7 +36,8 @@ class SetupMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         """Vérifie si le setup est fait, sinon redirige."""
         # Ne pas rediriger les requêtes vers /setup, /static, /health, /api/docs
-        path = request.url.path
+        # Utiliser request.scope['path'] pour être agnostique du root_path (ex: /character)
+        path = request.scope.get('path', '')
         allowed_paths = ["/setup", "/static", "/health", "/api/docs", "/api/redoc", "/api/openapi.json"]
 
         if not is_setup_done() and not any(path.startswith(p) for p in allowed_paths):
