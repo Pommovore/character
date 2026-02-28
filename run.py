@@ -22,13 +22,17 @@ def run_server():
     
     print(f"Démarrage du serveur sur {host}:{port} (reload={reload})")
     
+    # Le reverse proxy nginx ajoute /character (doit être configuré via root_path pour aider FastAPI / StaticFiles)
+    root_path = os.environ.get("ROOT_PATH", "/character")
+
     uvicorn.run(
         "src.api.api:app",
         host=host,
         port=port,
         reload=reload,
         proxy_headers=True,
-        forwarded_allow_ips="*"
+        forwarded_allow_ips="*",
+        root_path=root_path
     )
 
 if __name__ == "__main__":
