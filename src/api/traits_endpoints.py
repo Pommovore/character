@@ -6,8 +6,9 @@ Les requêtes sont authentifiées par token API et soumises à une file d'attent
 """
 
 import logging
+from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Depends, Header
+from fastapi import APIRouter, HTTPException, Depends, Header, Request
 from sqlalchemy.orm import Session
 
 from src.database import get_db
