@@ -42,11 +42,13 @@ L'application est construite selon une architecture en couches:
 
 ### Flux d'Exécution Asynchrone
 
-```
-1. Client soumet une analyse (request_id) ──> API
+```text
+1. Client soumet une analyse (request_id, texte, et optionnellement webhook) ──> API
 2. API ──> Retourne immédiatement HTTP 202 au client
-3. API ──> Démarre un traitement asynchrone (ThreadPool)
-4. Client demande résultat (request_id) ──> API
+3. API ──> Ajoute à la file d'attente (RequestQueue) et le ThreadPool démarre le traitement
+4. Client demande résultat via (request_id) ──> API
+   OU
+   L'API ──> Notifie automatiquement le Client via Webhook (POST result_url) à la fin
 5. API ──> Vérifie si traitement terminé
 6. Si terminé ──> Retourne résultats (HTTP 200)
    Si en cours ──> Retourne "en cours" (HTTP 202)
@@ -204,42 +206,40 @@ L'architecture est conçue pour faciliter:
 
 ## Diagramme de Séquence
 
-```
-┌─────────┐                  ┌──────┐                ┌────────────┐      ┌──────────────┐
-│ Client  │                  │ API  │                │CharacterStore│      │TraitsExtractor│
-└────┬────┘                  └──┬───┘                └──────┬───────┘      └───────┬──────┘
-     │                          │                           │                      │
-     │ POST /extract            │                           │                      │
-     │ (text, directive, id)    │                           │                      │
-     │─────────────────────────>│                           │                      │
-     │                          │                           │                      │
-     │                          │ process_async(id, func)   │                      │
-     │                          │─────────────────────────>│                      │
-     │                          │                           │                      │
-     │ 202 Accepted             │                           │                      │
-     │<─────────────────────────│                           │                      │
-     │                          │                           │                      │
-     │                          │                           │ extract_traits()     │
-     │                          │                           │─────────────────────>│
-     │                          │                           │                      │
-     │                          │                           │<─────────────────────│
-     │                          │                           │ traits               │
-     │                          │                           │                      │
-     │ GET /get_character/id    │                           │                      │
-     │─────────────────────────>│                           │                      │
-     │                          │ is_request_pending(id)    │                      │
-     │                          │─────────────────────────>│                      │
-     │                          │<─────────────────────────│                      │
-     │                          │ false                     │                      │
-     │                          │                           │                      │
-     │                          │ get_result(id)            │                      │
-     │                          │─────────────────────────>│                      │
-     │                          │<─────────────────────────│                      │
-     │                          │ CharacterTraitsResponse   │                      │
-     │                          │                           │                      │
-     │ 200 OK                   │                           │                      │
-     │ (traits, summary)        │                           │                      │
-     │<─────────────────────────│                           │                      │
+```text
+┌─────────┐                  ┌───────┐             ┌────────────┐      ┌───────────────┐
+│ Client  │                  │  API  │             │RequestQueue│      │TraitsExtractor│
+└────┬────┘                  └───┬───┘             └──────┬─────┘      └───────┬───────┘
+     │                           │                        │                    │
+     │ POST /extract             │                        │                    │
+     │ (text, webhook, id)       │                        │                    │
+     │──────────────────────────>│                        │                    │
+     │                           │                        │                    │
+     │                           │ enqueue(item)          │                    │
+     │                           │───────────────────────>│                    │
+     │                           │                        │                    │
+     │ 202 Accepted              │                        │                    │
+     │<──────────────────────────│                        │                    │
+     │                           │                        │                    │
+     │                           │                        │ extract_traits()   │
+     │                           │                        │───────────────────>│
+     │                           │                        │                    │
+     │                           │                        │<───────────────────│
+     │                           │                        │ traits             │
+     │                           │                        │                    │
+     │ POST (si webhook défini)  │                        │                    │
+     │<───────────────────────────────────────────────────│                    │
+     │                           │                        │                    │
+     │ GET /get_character/id     │                        │                    │
+     │──────────────────────────>│                        │                    │
+     │                           │ get_request_status(id) │                    │
+     │                           │───────────────────────>│                    │
+     │                           │<───────────────────────│                    │
+     │                           │ status complet         │                    │
+     │                           │                        │                    │
+     │ 200 OK                    │                        │                    │
+     │ (traits, summary)         │                        │                    │
+     │<──────────────────────────│                        │                    │
 ```
 
 ## Évolutions Futures
