@@ -204,6 +204,56 @@ for attempt in range(max_attempts):
         break
 ```
 
+### Exemple avec Webhook en Python
+
+Cet exemple s'appuie sur `FastAPI` (ou `Flask`) pour créer un serveur local très simple capable de recevoir le Callback de l'API.
+
+**1. Le Serveur Webhook (le receveur)**
+```python
+# Fichier: webhook_receiver.py
+# Lancer avec: fastapi run webhook_receiver.py --port 8001
+from fastapi import FastAPI, Request
+
+app = FastAPI()
+
+@app.post("/mon-callback")
+async def handle_callback(request: Request):
+    payload = await request.json()
+    print("\n--- WEBHOOK REÇU ! ---")
+    print(f"La requête {payload.get('request_id')} est terminée (Statut: {payload.get('status')})")
+    
+    # 3. Dès la réception, on peut aller chercher le résultat directement
+    if payload.get('status') == 'completed':
+        import requests
+        result_response = requests.get(payload.get('result_url'))
+        print("Résultat final :", result_response.json().get('summary'))
+    
+    return {"message": "Webhook bien reçu"}
+```
+
+**2. Le Script Client (l'expéditeur)**
+```python
+import requests
+
+submit_url = "http://localhost:8000/api/v1/traits/extract"
+
+# On précise notre propre serveur comme webhook de destination
+headers = {
+    "webhook": "http://localhost:8001/mon-callback"
+}
+
+payload = {
+    "text": "Gandalf le Gris est un sage, puissant et bienveillant magicien...",
+    "request_id": "gandalf-webhook-01",
+    "model_name": "distilbert-base-uncased"
+}
+
+response = requests.post(submit_url, json=payload, headers=headers)
+print("Statut de soumission:", response.status_code)
+print("Réponse:", response.json())
+print("Vous pouvez maintenant fermer ce script. Le serveur Webhook recevra la notification quand ce sera prêt.")
+```
+
 ## Vérification de Santé
 
 ### Point de terminaison
