@@ -47,8 +47,9 @@ Ce document définit les standards de développement, l'architecture et les work
 ### Déploiement
 *   Utiliser le script `deploy.py`.
 *   **NE PAS** modifier les fichiers directement sur le serveur de production.
-*   Toujours tester en local (`--dev`) avant de déployer en production (`--prod`).
-*   Commande : `uv run python deploy.py --dev` (ou `--prod`).
+*   Toujours tester en local (`--dev`) avant de déployer en production.
+*   Commande journalière (mise à jour légère du code) : `uv run python deploy.py --update`.
+*   Commande globale (Mise à jour code + config Nginx/Systemd) : `uv run python deploy.py --prod`.
 * se baser sur le fichier de configuration `config/deploy.conf` pour les paramètres de déploiement.
 
 ## 6. Bonnes Pratiques

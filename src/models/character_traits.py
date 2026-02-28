@@ -34,7 +34,6 @@ class CharacterTraitsResponse(BaseModel):
     traits: List[CharacterTrait] = Field(..., description="Liste des traits de caractère extraits")
     summary: Optional[str] = Field(None, description="Résumé des principaux traits du personnage")
     model_used: str = Field(..., description="Nom du modèle utilisé pour l'extraction")
-    validated_model: bool = Field(True, description="Indique si le modèle était valide pour l'API Hugging Face")
     request_id: str = Field(..., description="Identifiant unique de la demande")
     directive: Optional[str] = Field(None, description="Directive utilisée pour l'analyse")
     status: str = Field("completed", description="État du traitement (pending/completed)")

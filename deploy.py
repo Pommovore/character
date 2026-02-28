@@ -26,14 +26,29 @@ def load_config(config_path="config/deploy.conf"):
 
 def deploy_dev():
     """Déploiement en environnement de développement (local)."""
-    print("Déploiement en cours (Environnement: DEV)...")
-    print("En dev, utilisez simplement `python run.py` ou `uvicorn src.api.api:app --reload`")
+    print("Démarrage du serveur local de développement...")
+    try:
+        import run
+        run.run_server()
+    except ImportError:
+        print("Erreur: Impossible de charger run.py. Assurez-vous d'être à la racine du projet.")
+        import os
+        os.system("python run.py")
     sys.exit(0)
 
 def deploy_prod(config):
     """Déploiement en environnement de production (distant)."""
     print("Déploiement en cours (Environnement: PROD)...")
     
+    import random
+    setup_pin = f"{random.randint(0, 9999):04d}"
+    
+    print("\n" + "="*50)
+    print("INSTALLATION WEB SÉCURISÉE")
+    print(f"Code PIN pour l'installation web : {setup_pin}")
+    print("Veuillez conserver ce code. Il vous sera demandé sur la page web.")
+    print("="*50 + "\n")
+
     deploy_conf = config.get("deploy", {})
     host = deploy_conf.get("machine_name")
     target_dir = deploy_conf.get("target_directory")
@@ -42,19 +57,48 @@ def deploy_prod(config):
         print("Erreur : machine_name et target_directory sont requis dans la configuration pour la production.")
         sys.exit(1)
 
+    print(f"⚠️ ATTENTION : Vous êtes sur le point de faire une INSTALLATION PROPRE sur {host}:{target_dir}.")
+    print("Cela EFFACERA TOTALEMENT le répertoire distant (Y COMPRIS LA BASE DE DONNÉES).")
+    print("Seul le fichier .env distant sera conservé.")
+    print("La base de données locale NE SERA PAS copiée vers le serveur distant.")
+    confirm = input("Êtes-vous sûr de vouloir effacer le serveur distant et continuer ? (O/n) : ")
+    
+    if confirm.lower() not in ('o', 'oui', 'y', 'yes', ''):
+        print("Opération annulée.")
+        sys.exit(0)
+
+    import getpass
+    from fabric import Config
+    
+    sudo_pass = getpass.getpass(f"Mot de passe sudo pour {host} (appuyez sur Entrée si inutile) : ")
+    fabric_config = Config(overrides={'sudo': {'password': sudo_pass}}) if sudo_pass else None
+
+    print(f"Nettoyage du répertoire distant {target_dir} (conservation de .env)...")
+    try:
+        with Connection(host, config=fabric_config) as c:
+            c.run(f"mkdir -p {target_dir}")
+            with c.cd(target_dir):
+                c.run("find . -mindepth 1 -maxdepth 1 ! -name '.env' -exec rm -rf {} +")
+    except Exception as e:
+        print(f"Erreur lors du nettoyage distant : {e}")
+        sys.exit(1)
+
     print(f"Synchronisation des fichiers vers {host}:{target_dir}...")
     
     # Exclure les fichiers inutiles ou sensibles
     exclude_args = [
         "--exclude=.git",
         "--exclude=.venv",
+        "--exclude=.venv_tools",
         "--exclude=__pycache__",
         "--exclude=*.pyc",
         "--exclude=.env",  # Ne pas écraser le .env de prod
-        "--exclude=data/db/*.db", # Ne pas écraser la base de prod
+        "--exclude=data/db/*.db", # Ne PAS copier la base locale
+        "--exclude=*.sqlite3",
+        "--exclude=*.db",
     ]
     
-    # Commande rsync
+    # Commande rsync (Mode Nominal : synchronise tout sauf exclusions)
     rsync_cmd = f"rsync -avz --delete {' '.join(exclude_args)} ./ {host}:{target_dir}"
     result = os.system(rsync_cmd)
     
@@ -64,21 +108,44 @@ def deploy_prod(config):
 
     print("Exécution des commandes post-déploiement sur le serveur...")
     
-    import getpass
-    from fabric import Config
-    
-    sudo_pass = getpass.getpass(f"Mot de passe sudo pour {host} (appuyez sur Entrée si inutile) : ")
-    config = Config(overrides={'sudo': {'password': sudo_pass}}) if sudo_pass else None
-    
     try:
         # Connexion SSH pour exécuter les commandes à distance
         # Note: Suppose que l'authentification par clé SSH est configurée
-        with Connection(host, config=config) as c:
+        with Connection(host, config=fabric_config) as c:
             with c.cd(target_dir):
                 print("1. Installation des dépendances avec uv...")
                 # L'outil uv créera automatiquement le .venv et installera l'environnement de production
                 # On exporte le PATH pour les sessions SSH non-interactives où uv (souvent dans ~/.local/bin ou ~/.cargo/bin) n'est pas reconnu
                 c.run("export PATH=$PATH:$HOME/.local/bin:$HOME/.cargo/bin && uv sync --no-dev")
+                
+                print("1.b Configuration de l'environnement de sécurité...")
+                import secrets
+                
+                existing_env = {}
+                try:
+                    res = c.run("cat .env", hide=True)
+                    for line in res.stdout.splitlines():
+                        if '=' in line:
+                            k, v = line.split("=", 1)
+                            existing_env[k] = v
+                except Exception:
+                    pass
+                
+                if "ADMIN_EMAIL" not in existing_env:
+                    existing_env["SETUP_PIN_CODE"] = setup_pin
+                else:
+                    print("L'application est déjà configurée (ADMIN_EMAIL trouvé). Ignorer le code PIN.")
+                
+                if "SECRET_KEY" not in existing_env:
+                    existing_env["SECRET_KEY"] = secrets.token_hex(32)
+                if "DATABASE_URL" not in existing_env:
+                    existing_env["DATABASE_URL"] = "sqlite:///data/db/character.db"
+                    
+                existing_env["PORT"] = deploy_conf.get("port", 8000)
+                existing_env["HOST"] = "127.0.0.1"
+                    
+                new_env = "\n".join([f"{k}={v}" for k, v in existing_env.items()])
+                c.run("cat << 'EOF' > .env\n" + new_env + "\nEOF")
                 
             print("2. Redémarrage du service systemd...")
             # Note: Si le mot de passe est saisi au prompt, Fabric s'en charge.
@@ -98,19 +165,71 @@ def deploy_prod(config):
         print(f"Erreur lors de l'exécution des commandes distantes : {e}")
         print("Note : Vérifiez que 'fabric' est installé et que votre clé SSH est configurée.")
 
+def deploy_update(config):
+    """Mise à jour légère : Uniquement les fichiers suivis par git, pas de config Nginx/Systemd."""
+    print("Mise à jour en cours (Environnement: PROD)...")
+    
+    deploy_conf = config.get("deploy", {})
+    host = deploy_conf.get("machine_name")
+    target_dir = deploy_conf.get("target_directory")
+    
+    if not host or not target_dir:
+        print("Erreur : machine_name et target_directory sont requis.")
+        sys.exit(1)
+
+    print(f"Synchronisation (fichiers git uniquement) vers {host}:{target_dir}...")
+    
+    # Exporte la liste des fichiers Git vers un fichier temporaire pour rsync
+    os.system("git ls-files > .git_files_list.txt")
+    
+    # Exclusions explicites pour être sûr de ne pas envoyer la BDD locale même si elle s'est retrouvée dans git
+    exclude_args = [
+        "--exclude=*.db",
+        "--exclude=*.sqlite3",
+        "--exclude=data/db/*.db"
+    ]
+    
+    # Rsync utilise --files-from pour NE COPIER QUE ce qui est dans .git_files_list.txt
+    rsync_cmd = f"rsync -avz {' '.join(exclude_args)} --files-from=.git_files_list.txt ./ {host}:{target_dir}"
+    result = os.system(rsync_cmd)
+    
+    os.system("rm .git_files_list.txt") # Nettoyage
+    
+    if result != 0:
+        print("Erreur lors de la synchronisation de la mise à jour.")
+        sys.exit(1)
+
+    print("Exécution des commandes post-mise-à-jour sur le serveur...")
+    import getpass
+    from fabric import Config
+    
+    sudo_pass = getpass.getpass(f"Mot de passe sudo pour {host} (appuyez sur Entrée si inutile) : ")
+    config = Config(overrides={'sudo': {'password': sudo_pass}}) if sudo_pass else None
+    
+    try:
+        with Connection(host, config=config) as c:
+            with c.cd(target_dir):
+                print("1. Installation des NOUVELLES dépendances avec uv (si pyproject a changé)...")
+                c.run("export PATH=$PATH:$HOME/.local/bin:$HOME/.cargo/bin && uv sync --no-dev")
+                
+            print("2. Redémarrage du service systemd...")
+            # Pas de cp /etc/systemd... ou de reload du daemon, juste un restart basique
+            c.sudo("systemctl restart character.service")
+                
+        print("✅ Mise à jour validée et relancée !")
+    except Exception as e:
+        print(f"Erreur lors de l'exécution : {e}")
+
 def main():
     parser = argparse.ArgumentParser(description="Script de déploiement de l'application Character")
     parser.add_argument("--dev", action="store_true", help="Déployer en environnement de développement (local)")
-    parser.add_argument("--prod", action="store_true", help="Déployer en environnement de production (distant)")
+    parser.add_argument("--prod", action="store_true", help="Déployer complétement (fichiers + config serveur)")
+    parser.add_argument("--update", action="store_true", help="Mise à jour légère (uniquement fichiers git, restart simple)")
     args = parser.parse_args()
 
-    if not args.dev and not args.prod:
-        print("Veuillez spécifier l'environnement : --dev ou --prod")
+    if sum([args.dev, args.prod, args.update]) != 1:
+        print("Veuillez spécifier EXACTEMENT UN environnement : --dev, --prod ou --update")
         parser.print_help()
-        sys.exit(1)
-
-    if args.dev and args.prod:
-        print("Erreur : Vous ne pouvez pas spécifier --dev et --prod simultanément.")
         sys.exit(1)
 
     config = load_config()
@@ -119,6 +238,8 @@ def main():
         deploy_dev()
     elif args.prod:
         deploy_prod(config)
+    elif args.update:
+        deploy_update(config)
 
 if __name__ == "__main__":
     main()

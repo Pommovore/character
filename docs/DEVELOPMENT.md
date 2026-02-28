@@ -131,7 +131,8 @@ Ce projet suit les directives de style PEP 8. Nous utilisons les outils suivants
 Pour le déploiement sur un serveur de production, le projet inclut un script Python dédié (`deploy.py`) et ses modèles de configuration :
 - Configurez `config/deploy.conf` selon le serveur (hôte, port, répertoire...)
 - Les scripts Systemd (`character.service`) et Nginx (`nginx.conf`) garantissent la stabilité
-- Lancez `uv run python deploy.py --prod` depuis votre machine pour synchroniser et relancer le serveur distant automatiquement (via `rsync` et SSH).
+- Lancez `uv run python deploy.py --update` au quotidien pour envoyer votre code propre.
+- Utilisez `uv run python deploy.py --prod` uniquement pour appliquer des modifications aux configurations (serveur Nginx, ou daemon Systemd).
 
 Consultez le fichier `INSTALLATION.md` pour les détails de la configuration.
 

@@ -33,7 +33,10 @@ templates = Jinja2Templates(directory=TEMPLATES_DIR)
 
 def is_setup_done() -> bool:
     """Vérifie si le setup initial a déjà été effectué."""
-    return os.path.exists(ENV_FILE)
+    if not os.path.exists(ENV_FILE):
+        return False
+    with open(ENV_FILE, 'r') as f:
+        return "ADMIN_EMAIL=" in f.read()
 
 
 @router.get("/setup", response_class=HTMLResponse)
@@ -54,6 +57,7 @@ async def setup_submit(
     email: str = Form(...),
     password: str = Form(...),
     password_confirm: str = Form(...),
+    setup_pin: str = Form(""),
     discord_webhook: str = Form(""),
     hf_token: str = Form(""),
     db: Session = Depends(get_db),
@@ -64,6 +68,18 @@ async def setup_submit(
 
     # Validation
     errors = []
+    
+    expected_pin = None
+    if os.path.exists(ENV_FILE):
+        with open(ENV_FILE, 'r') as f:
+            for line in f:
+                if line.startswith("SETUP_PIN_CODE="):
+                    expected_pin = line.strip().split("=", 1)[1]
+                    break
+                    
+    if expected_pin and setup_pin != expected_pin:
+        errors.append("Code PIN de sécurité incorrect")
+        
     if not email or "@" not in email:
         errors.append("Adresse email invalide")
     if len(password) < 8:
@@ -80,24 +96,41 @@ async def setup_submit(
             "hf_token": hf_token,
         })
 
-    # Générer une clé secrète
-    secret_key = secrets.token_hex(32)
+    # Mettre à jour le fichier .env
+    existing_env = {}
+    if os.path.exists(ENV_FILE):
+        with open(ENV_FILE, "r") as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    k, v = line.split("=", 1)
+                    existing_env[k] = v
 
-    # Créer le fichier .env
-    env_content = (
-        f"ADMIN_EMAIL={email}\n"
-        f"SECRET_KEY={secret_key}\n"
-        f"DISCORD_WEBHOOK_URL={discord_webhook}\n"
-        f"HF_TOKEN={hf_token}\n"
-        f"DATABASE_URL=sqlite:///data/db/character.db\n"
-    )
+    secret_key = existing_env.get("SECRET_KEY", secrets.token_hex(32))
+    
+    existing_env["ADMIN_EMAIL"] = email
+    existing_env["SECRET_KEY"] = secret_key
+    existing_env["DISCORD_WEBHOOK_URL"] = discord_webhook
+    existing_env["HF_TOKEN"] = hf_token
+    if "DATABASE_URL" not in existing_env:
+        existing_env["DATABASE_URL"] = "sqlite:///data/db/character.db"
+    if "PORT" not in existing_env:
+        existing_env["PORT"] = "8000"
+    if "HOST" not in existing_env:
+        existing_env["HOST"] = "0.0.0.0"
+
+    if "SETUP_PIN_CODE" in existing_env:
+        del existing_env["SETUP_PIN_CODE"]
+        
+    env_content = "\n".join([f"{k}={v}" for k, v in existing_env.items()]) + "\n"
 
     try:
         with open(ENV_FILE, "w") as f:
             f.write(env_content)
-        logger.info(f"Fichier .env créé avec succès pour l'administrateur : {email}")
+        logger.info(f"Fichier .env mis à jour avec succès pour l'administrateur : {email}")
 
         # Charger les variables d'environnement
+        os.environ["ADMIN_EMAIL"] = email
         os.environ["SECRET_KEY"] = secret_key
         os.environ["DISCORD_WEBHOOK_URL"] = discord_webhook
         os.environ["HF_TOKEN"] = hf_token

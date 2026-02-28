@@ -90,17 +90,22 @@ Des modèles de configuration sont fournis dans le dossier `config/`. Vous devez
 
 ### 3. Exécuter le déploiement
 
-Depuis votre machine de développement, lancez le script de déploiement (qui utilise `rsync` et `fabric`) :
+Depuis votre machine de développement, choisissez la commande de déploiement (utilisant `rsync` et `fabric`) :
 
+**Plutôt pour le code au quotidien (plus sécure et rapide) :**
+```bash
+uv run python deploy.py --update
+```
+Ce script va uniquement se baser sur les fichiers suivis par git (`git ls-files`) pour pousser votre code de façon sélective et recharger l'application Python. Il ignorera tout fichier local parasite et les modifications de configuration serveur.
+
+**Pour le tout premier déploiement complet ou mise à jour Serveur :**
 ```bash
 uv run python deploy.py --prod
 ```
-
 Ce script va automatiquement :
-- Synchroniser les fichiers source vers le `target_directory`.
-- Ignorer les fichiers locaux sensibles (`.env`, bases de données PDO, dossiers git).
-- Se connecter en SSH pour créer l'environnement virtuel et installer les dépendances.
-- Redémarrer le service Systemd `character.service`.
+- Synchroniser tout le code vers le `target_directory`.
+- Ignorer par défaut les exclusions vitales (`*.db`, `.env`).
+- Forcer les redémarrages complets (Systemd daemon reload + Nginx reload).
 
 ## Variables d'Environnement
 
