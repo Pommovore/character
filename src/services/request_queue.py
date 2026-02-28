@@ -231,6 +231,27 @@ class RequestQueue:
         for i, item in enumerate(self._queue):
             item.position = i + offset
 
+    def remove_waiting_request(self, request_id: str) -> bool:
+        """
+        Retire une requête de la file d'attente si elle n'a pas encore commencé.
+        Utile pour surcharger/écraser une requête existante.
+        
+        Args:
+            request_id: Identifiant de la requête
+            
+        Returns:
+            True si l'élément a été trouvé et retiré, False sinon.
+        """
+        self._initialize()
+        with self._queue_lock:
+            for i, item in enumerate(self._queue):
+                if item.request_id == request_id:
+                    self._queue.pop(i)
+                    self._update_positions()
+                    logger.info(f"Requête {request_id} retirée de la file d'attente (surcharge)")
+                    return True
+            return False
+
     def get_queue_status(self, user_id: Optional[int] = None) -> dict:
         """
         Récupère l'état actuel de la file d'attente.

@@ -85,15 +85,18 @@ async def extract_character_traits(
     db.add(request_log)
     db.commit()
 
-    # Vérifier si la requête est déjà connue dans la file
+    # Gérer la surcharge si la requête est déjà connue
     queue = RequestQueue()
     existing = queue.get_request_status(request_id)
     if existing:
-        return CharacterProcessingStatus(
-            request_id=request_id,
-            status=existing["status"],
-            message=f"Requête déjà connue (statut: {existing['status']})"
-        )
+        if existing["status"] == "waiting":
+            # Si elle est encore en attente, on la retire pour ne pas faire un double traitement inutile
+            queue.remove_waiting_request(request_id)
+            logger.info(f"Requête {request_id} existante en attente retirée pour surcharge.")
+        else:
+            # Si elle est en cours (processing) ou terminée (completed/failed),
+            # le nouveau traitement écrasera l'ancien résultat une fois terminé.
+            logger.info(f"Requête {request_id} va être surchargée (statut précédent: {existing['status']}).")
 
     # Détermination du modèle à utiliser
     # 1. Spécifié dans la requête API explicitement
