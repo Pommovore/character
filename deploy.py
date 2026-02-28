@@ -57,7 +57,11 @@ def deploy_prod(config):
         print("Erreur : machine_name et target_directory sont requis dans la configuration pour la production.")
         sys.exit(1)
 
-    print(f"⚠️ ATTENTION : Vous êtes sur le point de faire une INSTALLATION PROPRE sur {host}:{target_dir}.")
+    remote_user = os.environ.get('REMOTE_USER')
+    remote_pwd = os.environ.get('REMOTE_PWD')
+    host_str = f"{remote_user}@{host}" if remote_user else host
+
+    print(f"⚠️ ATTENTION : Vous êtes sur le point de faire une INSTALLATION PROPRE sur {host_str}:{target_dir}.")
     print("Cela EFFACERA TOTALEMENT le répertoire distant (Y COMPRIS LA BASE DE DONNÉES).")
     print("Seul le fichier .env distant sera conservé.")
     print("La base de données locale NE SERA PAS copiée vers le serveur distant.")
@@ -70,12 +74,13 @@ def deploy_prod(config):
     import getpass
     from fabric import Config
     
-    sudo_pass = getpass.getpass(f"Mot de passe sudo pour {host} (appuyez sur Entrée si inutile) : ")
+    sudo_pass = remote_pwd or getpass.getpass(f"Mot de passe sudo pour {host} (appuyez sur Entrée si inutile) : ")
     fabric_config = Config(overrides={'sudo': {'password': sudo_pass}}) if sudo_pass else None
+    connect_kwargs = {"password": remote_pwd} if remote_pwd else {}
 
     print(f"Nettoyage du répertoire distant {target_dir} (conservation de .env)...")
     try:
-        with Connection(host, config=fabric_config) as c:
+        with Connection(host, user=remote_user, connect_kwargs=connect_kwargs, config=fabric_config) as c:
             c.run(f"mkdir -p {target_dir}")
             with c.cd(target_dir):
                 c.run("find . -mindepth 1 -maxdepth 1 ! -name '.env' -exec rm -rf {} +")
@@ -99,7 +104,7 @@ def deploy_prod(config):
     ]
     
     # Commande rsync (Mode Nominal : synchronise tout sauf exclusions)
-    rsync_cmd = f"rsync -avz --delete {' '.join(exclude_args)} ./ {host}:{target_dir}"
+    rsync_cmd = f"rsync -avz --delete {' '.join(exclude_args)} ./ {host_str}:{target_dir}"
     result = os.system(rsync_cmd)
     
     if result != 0:
@@ -111,7 +116,7 @@ def deploy_prod(config):
     try:
         # Connexion SSH pour exécuter les commandes à distance
         # Note: Suppose que l'authentification par clé SSH est configurée
-        with Connection(host, config=fabric_config) as c:
+        with Connection(host, user=remote_user, connect_kwargs=connect_kwargs, config=fabric_config) as c:
             with c.cd(target_dir):
                 print("1. Installation des dépendances avec uv...")
                 # L'outil uv créera automatiquement le .venv et installera l'environnement de production
@@ -177,7 +182,11 @@ def deploy_update(config):
         print("Erreur : machine_name et target_directory sont requis.")
         sys.exit(1)
 
-    print(f"Synchronisation (fichiers git uniquement) vers {host}:{target_dir}...")
+    remote_user = os.environ.get('REMOTE_USER')
+    remote_pwd = os.environ.get('REMOTE_PWD')
+    host_str = f"{remote_user}@{host}" if remote_user else host
+
+    print(f"Synchronisation (fichiers git uniquement) vers {host_str}:{target_dir}...")
     
     # Exporte la liste des fichiers Git vers un fichier temporaire pour rsync
     os.system("git ls-files > .git_files_list.txt")
@@ -190,7 +199,7 @@ def deploy_update(config):
     ]
     
     # Rsync utilise --files-from pour NE COPIER QUE ce qui est dans .git_files_list.txt
-    rsync_cmd = f"rsync -avz {' '.join(exclude_args)} --files-from=.git_files_list.txt ./ {host}:{target_dir}"
+    rsync_cmd = f"rsync -avz {' '.join(exclude_args)} --files-from=.git_files_list.txt ./ {host_str}:{target_dir}"
     result = os.system(rsync_cmd)
     
     os.system("rm .git_files_list.txt") # Nettoyage
@@ -203,11 +212,12 @@ def deploy_update(config):
     import getpass
     from fabric import Config
     
-    sudo_pass = getpass.getpass(f"Mot de passe sudo pour {host} (appuyez sur Entrée si inutile) : ")
-    config = Config(overrides={'sudo': {'password': sudo_pass}}) if sudo_pass else None
+    sudo_pass = remote_pwd or getpass.getpass(f"Mot de passe sudo pour {host} (appuyez sur Entrée si inutile) : ")
+    fabric_config = Config(overrides={'sudo': {'password': sudo_pass}}) if sudo_pass else None
+    connect_kwargs = {"password": remote_pwd} if remote_pwd else {}
     
     try:
-        with Connection(host, config=config) as c:
+        with Connection(host, user=remote_user, connect_kwargs=connect_kwargs, config=fabric_config) as c:
             with c.cd(target_dir):
                 print("1. Installation des NOUVELLES dépendances avec uv (si pyproject a changé)...")
                 c.run("export PATH=$PATH:$HOME/.local/bin:$HOME/.cargo/bin && uv sync --no-dev")
