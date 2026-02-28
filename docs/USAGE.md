@@ -57,7 +57,28 @@ Paramètres :
 ```
 
 La réponse indique que le traitement a été pris en compte et est en cours. 
-L'API renvoie immédiatement un code HTTP 202 (Accepted) pour indiquer que la demande a été acceptée mais n'est pas encore traitée.
+### Webhook de Notification (Optionnel)
+
+Si vous souhaitez être notifié automatiquement de la fin d'une extraction, vous pouvez inclure un header HTTP `webhook` pointant vers l'URL de votre choix.
+
+```bash
+curl -X POST "http://localhost:8000/api/v1/traits/extract" \
+     ...
+     -H "webhook: https://votre-domaine.com/callback" \
+     ...
+```
+
+Une fois le traitement terminé, l'application enverra une requête `POST` à cette URL avec le payload JSON suivant :
+
+```json
+{
+  "request_id": "abc-123-xyz",
+  "status": "completed",
+  "user_email": "votre@email.com",
+  "result_url": "http://localhost:8000/api/v1/traits/get_character/abc-123-xyz"
+}
+```
+Vous pourrez alors appeler l'URL `result_url` (toujours en fournissant un mot de passe ou sans, selon la route) pour récupérer l'analyse finale. En cas d'erreur de traitement, le statut sera `failed` et une clé `error` sera incluse à la place de `result_url`.
 
 ## Récupération des Résultats
 

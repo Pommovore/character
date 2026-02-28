@@ -31,9 +31,11 @@ router = APIRouter(prefix="/api/v1/traits", tags=["Traits de Caractère"])
 
 @router.post("/extract", response_model=CharacterProcessingStatus, status_code=202)
 async def extract_character_traits(
+    request: Request,
     description: CharacterDescription,
     authorization: str = Header(None, alias="Authorization"),
     token: str = Header(None, alias="token"),
+    webhook: Optional[str] = Header(None),
     db: Session = Depends(get_db),
 ) -> CharacterProcessingStatus:
     """
@@ -41,15 +43,15 @@ async def extract_character_traits(
 
     Requiert un token API valide dans le header 'token' ou 'Authorization: Bearer <token>'.
     Les requêtes sont soumises à une file d'attente FIFO et traitées dans l'ordre.
+    Le header 'webhook' optionnel permet de définir une URL de rappel.
 
     Args:
+        request: Requête HTTP FastApi
         description: Entrée de description du personnage avec identifiant
         authorization: Header Authorization avec le token API
         token: Header spécifique 'token' avec le token API
+        webhook: Header contenant l'URL de notification (webhook)
         db: Session de base de données
-
-    Returns:
-        État du traitement avec identifiant de la demande (HTTP 202 Accepted)
     """
     # Priorité au header 'token' demandé par l'utilisateur
     auth_input = token or authorization
@@ -99,6 +101,15 @@ async def extract_character_traits(
     # 3. Modèle par défaut de l'application
     model_name_to_use = description.model_name or user.preferred_model or get_default_model()
     
+    # Construction de l'URL de résultat de façon robuste
+    scheme = request.headers.get("x-forwarded-proto", request.url.scheme)
+    host = request.headers.get("x-forwarded-host", request.url.netloc)
+    root_path = request.scope.get("root_path", "")
+    result_url = f"{scheme}://{host}{root_path}/api/v1/traits/get_character/{request_id}"
+    
+    if webhook:
+        logger.info(f"Webhook configuré pour cette requête : {webhook}")
+        
     # Ajouter à la file d'attente
     queue_item = QueueItem(
         request_id=request_id,
@@ -107,6 +118,8 @@ async def extract_character_traits(
         text=text,
         directive=description.directive,
         model_name=model_name_to_use,
+        webhook=webhook,
+        result_url=result_url
     )
     position = queue.enqueue(queue_item)
 

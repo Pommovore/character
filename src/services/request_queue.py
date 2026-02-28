@@ -40,6 +40,8 @@ class QueueItem:
     position: int = 0
     result: Any = None
     error: Optional[str] = None
+    webhook: Optional[str] = None
+    result_url: Optional[str] = None
     created_at: float = field(default_factory=time.time)
 
 
@@ -130,6 +132,40 @@ class RequestQueue:
                     self._results[item.request_id] = item
                     # Mettre à jour les positions
                     self._update_positions()
+
+                # Notifier le webhook si configuré
+                if item.webhook:
+                    self._notify_webhook(item)
+
+    def _notify_webhook(self, item: QueueItem):
+        """Envoie une requête POST au webhook configuré avec le résultat du traitement."""
+        if not item.webhook:
+            return
+
+        payload = {
+            "request_id": item.request_id,
+            "status": item.status.value,
+            "user_email": item.user_email,
+        }
+
+        if item.status == QueueItemStatus.COMPLETED:
+            payload["result_url"] = item.result_url
+        else:
+            payload["error"] = item.error
+
+        def perform_request():
+            import httpx
+            try:
+                # Fire-and-forget: on utilise le client synchrone pour la simplicité dans ce thread
+                with httpx.Client(timeout=10.0) as client:
+                    response = client.post(item.webhook, json=payload)
+                    response.raise_for_status()
+                    logger.info(f"Webhook notifié avec succès pour {item.request_id} ({response.status_code})")
+            except Exception as e:
+                logger.error(f"Échec de la notification webhook pour {item.request_id} : {str(e)}")
+
+        # Exécuter dans un thread séparé pour ne pas bloquer la boucle principale
+        threading.Thread(target=perform_request, daemon=True).start()
 
     def _persist_result(self, item: QueueItem):
         """
