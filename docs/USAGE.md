@@ -127,7 +127,7 @@ La réponse inclut :
 
 ### 1. Démarrer le serveur
 ```bash
-python run.py
+uv run run.py
 ```
 *Le serveur utilisera le `HOST` et le `PORT` définis dans votre fichier `.env`.*
 

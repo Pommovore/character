@@ -17,28 +17,11 @@ git clone https://github.com/yourusername/character-traits-extractor.git
 cd character-traits-extractor
 ```
 
-### 2. Créer un environnement virtuel (recommandé)
+### 2. Configurer l'environnement
 
 ```bash
-python -m venv venv
-```
-
-Activer l'environnement virtuel :
-
-- Sur Windows :
-  ```bash
-  venv\Scripts\activate
-  ```
-
-- Sur macOS/Linux :
-  ```bash
-  source venv/bin/activate
-  ```
-
-### 3. Installer les dépendances
-
-```bash
-pip install -r requirements.txt
+# Installer les dépendances et créer l'environnement virtuel automatiquement
+uv sync
 ```
 
 ## Exécution avec Docker

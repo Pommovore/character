@@ -35,21 +35,15 @@ L'Extracteur de Traits de Caractère est une application qui utilise des modèle
 git clone https://github.com/votre-utilisateur/extracteur-traits-caractere.git
 cd extracteur-traits-caractere
 
-# Créer un environnement virtuel
-python -m venv venv
-source venv/bin/activate  # Linux/macOS
-# ou
-venv\Scripts\activate     # Windows
-
-# Installer les dépendances
-pip install -r requirements.txt
+# Installer les dépendances et créer l'environnement automatiquement avec uv
+uv sync
 ```
 
 ### Lancement
 
 ```bash
 # Lancer l'application
-python -m src.main
+uv run python -m src.main
 ```
 
 L'API sera disponible à l'adresse `http://localhost:8000`.

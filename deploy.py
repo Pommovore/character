@@ -33,7 +33,7 @@ def deploy_dev():
     except ImportError:
         print("Erreur: Impossible de charger run.py. Assurez-vous d'être à la racine du projet.")
         import os
-        os.system("python run.py")
+        os.system("uv run run.py")
     sys.exit(0)
 
 def deploy_prod(config):

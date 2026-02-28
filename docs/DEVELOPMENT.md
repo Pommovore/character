@@ -11,31 +11,14 @@ git clone https://github.com/yourusername/character-traits-extractor.git
 cd character-traits-extractor
 ```
 
-### 2. Créer un environnement virtuel
+### 2. Configurer l'environnement
 
 ```bash
-python -m venv venv
+# Installer les dépendances et créer l'environnement virtuel automatiquement
+uv sync --all-extras
 ```
 
-Activer l'environnement virtuel :
-
-- Sur Windows :
-  ```bash
-  venv\Scripts\activate
-  ```
-
-- Sur macOS/Linux :
-  ```bash
-  source venv/bin/activate
-  ```
-
-### 3. Installer les dépendances de développement
-
-```bash
-pip install -r requirements-dev.txt
-```
-
-Cela inclut toutes les dépendances régulières plus les outils de développement comme pytest, black et isort.
+Cela inclut toutes les dépendances régulières plus les outils de développement (si définis dans `pyproject.toml`).
 
 ## Structure du Projet
 
@@ -59,7 +42,7 @@ extracteur-traits-caractere/
 Pour exécuter l'application en mode développement (utilise la configuration du `.env`) :
 
 ```bash
-python run.py
+uv run run.py
 ```
 
 L'option `--reload` permet le rechargement automatique lors des modifications du code.
