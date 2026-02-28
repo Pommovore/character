@@ -57,16 +57,21 @@ function updateQueueDisplay(data) {
     if (data.remaining_requests !== undefined) {
         const remaining = document.getElementById('remaining-requests');
         if (remaining) {
-            remaining.textContent = data.remaining_requests;
-
-            // Mettre à jour la couleur
-            remaining.className = 'fw-bold fs-4';
-            if (data.remaining_requests > 10) {
-                remaining.classList.add('text-success');
-            } else if (data.remaining_requests > 3) {
-                remaining.classList.add('text-warning');
+            if (data.remaining_requests >= 9999) {
+                remaining.textContent = '∞';
+                remaining.className = 'fw-bold fs-4 text-info';
             } else {
-                remaining.classList.add('text-danger');
+                remaining.textContent = data.remaining_requests;
+
+                // Mettre à jour la couleur
+                remaining.className = 'fw-bold fs-4';
+                if (data.remaining_requests > 10) {
+                    remaining.classList.add('text-success');
+                } else if (data.remaining_requests > 3) {
+                    remaining.classList.add('text-warning');
+                } else {
+                    remaining.classList.add('text-danger');
+                }
             }
         }
     }

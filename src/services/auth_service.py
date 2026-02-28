@@ -262,5 +262,9 @@ def get_remaining_requests(user: User, db: Session) -> int:
         RequestLog.created_at >= since
     ).count()
 
+    # Les administrateurs n'ont pas de quota de requêtes
+    if user.role == "admin":
+        return 9999
+
     rate_limit = RATE_LIMIT_VIP if user.status == "vip" else RATE_LIMIT_NORMAL
     return max(0, rate_limit - request_count)

@@ -142,6 +142,9 @@ class RequestQueue:
         if not item.webhook:
             return
 
+        is_discord = "discord.com/api/webhooks" in item.webhook
+
+        # Format générique
         payload = {
             "request_id": item.request_id,
             "status": item.status.value,
@@ -152,6 +155,25 @@ class RequestQueue:
             payload["result_url"] = item.result_url
         else:
             payload["error"] = item.error
+
+        # Format spécifique pour Discord
+        if is_discord:
+            color = 65280 if item.status == QueueItemStatus.COMPLETED else 16711680 # Vert ou Rouge
+            title = "✅ Extraction Terminée" if item.status == QueueItemStatus.COMPLETED else "❌ Échec de l'Extraction"
+            desc = f"**ID** : `{item.request_id}`\n**Utilisateur** : `{item.user_email}`"
+            
+            if item.status == QueueItemStatus.COMPLETED:
+                desc += f"\n**Résultat** : [Télécharger le JSON]({item.result_url})"
+            else:
+                desc += f"\n**Erreur** : {item.error}"
+
+            payload = {
+                "embeds": [{
+                    "title": title,
+                    "description": desc,
+                    "color": color
+                }]
+            }
 
         def perform_request():
             import httpx
@@ -275,7 +297,7 @@ class RequestQueue:
                     })
 
             processing = None
-            if self._processing:
+            if self._processing and self._processing.status == QueueItemStatus.PROCESSING:
                 if user_id is None or self._processing.user_id == user_id:
                     processing = {
                         "request_id": self._processing.request_id,
@@ -361,8 +383,8 @@ class RequestQueue:
         self._initialize()
         items = []
         with self._queue_lock:
-            # En cours de traitement
-            if self._processing and self._processing.user_id == user_id:
+            # En cours de traitement (seulement si le statut est encore processing)
+            if self._processing and self._processing.user_id == user_id and self._processing.status == QueueItemStatus.PROCESSING:
                 items.append({
                     "request_id": self._processing.request_id,
                     "status": self._processing.status.value,
