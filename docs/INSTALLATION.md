@@ -94,18 +94,23 @@ Depuis votre machine de développement, choisissez la commande de déploiement (
 
 **Plutôt pour le code au quotidien (plus sécure et rapide) :**
 ```bash
-uv run python deploy.py --update
+python deploy.py --update
 ```
-Ce script va uniquement se baser sur les fichiers suivis par git (`git ls-files`) pour pousser votre code de façon sélective et recharger l'application Python. Il ignorera tout fichier local parasite et les modifications de configuration serveur.
+Ce script va uniquement se baser sur les fichiers suivis par git (`git ls-files`) pour pousser votre code de façon sélective et recharger l'application Python (`uvicorn`). Il ignore tout fichier local parasite et les modifications de configuration de serveur (Systemd, Nginx). 
 
 **Pour le tout premier déploiement complet ou mise à jour Serveur :**
 ```bash
-uv run python deploy.py --prod
+python deploy.py --prod
 ```
 Ce script va automatiquement :
+- Vous demander interactivement de configurer ou vérifier les identifiants administrateur de production (Email, Mot de passe sécurisé, Token Hugging Face, et Webhook Discord).
+- Générer votre fichier `.env` distant et le PIN d'installation (`SETUP_PIN_CODE`)
 - Synchroniser tout le code vers le `target_directory`.
-- Ignorer par défaut les exclusions vitales (`*.db`, `.env`).
+- Installer/Configurer Nginx et Systemd.
 - Forcer les redémarrages complets (Systemd daemon reload + Nginx reload).
+
+**Note sur le Reverse Proxy :**
+L'application gère nativement le sous-dossier défini dans `deploy.conf` (`app_prefix: "/character"`). Nginx transmet ce chemin via `X-Forwarded-Prefix`, et l'application prefix automatiquement tous ses liens internes. Lors du premier déploiement, vous devez vous rendre à l'adresse fournie (ex: `https://votre-domaine.com/character/setup`) et renseigner le **Code PIN d'installation** indiqué par le terminal pour finaliser la création du compte administrateur.
 
 ## Variables d'Environnement
 
