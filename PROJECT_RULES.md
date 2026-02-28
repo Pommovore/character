@@ -1,4 +1,4 @@
-# Règles et Conventions du Projet RPGPDF2Text
+# Règles et Conventions du Projet CHARACTER
 
 Ce document définit les standards de développement, l'architecture et les workflows à respecter pour maintenir la cohérence et la qualité du projet.
 
@@ -45,10 +45,11 @@ Ce document définit les standards de développement, l'architecture et les work
 *   Lancer le serveur de dev : `uv run flask run` ou via `run_local.sh`.
 
 ### Déploiement
-*   Utiliser le script `update_deploy.py`.
+*   Utiliser le script `deploy.py`.
 *   **NE PAS** modifier les fichiers directement sur le serveur de production.
 *   Toujours tester en local (`--dev`) avant de déployer en production (`--prod`).
-*   Commande : `uv run python update_deploy.py --dev` (ou `--prod`).
+*   Commande : `uv run python deploy.py --dev` (ou `--prod`).
+* se baser sur le fichier de configuration `config/deploy.conf` pour les paramètres de déploiement.
 
 ## 6. Bonnes Pratiques
 

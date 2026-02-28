@@ -26,7 +26,9 @@ def run_server():
         "src.api.api:app",
         host=host,
         port=port,
-        reload=reload
+        reload=reload,
+        proxy_headers=True,
+        forwarded_allow_ips="*"
     )
 
 if __name__ == "__main__":

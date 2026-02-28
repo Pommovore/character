@@ -5,6 +5,8 @@
  * de la file d'attente des requêtes.
  */
 
+const APP_PREFIX = document.querySelector('meta[name="app-prefix"]')?.content || '';
+
 document.addEventListener('DOMContentLoaded', function () {
     initQueueSSE();
 });
@@ -14,7 +16,7 @@ document.addEventListener('DOMContentLoaded', function () {
  * de la file d'attente en temps réel.
  */
 function initQueueSSE() {
-    const evtSource = new EventSource('/api/v1/queue/status');
+    const evtSource = new EventSource(`${APP_PREFIX}/api/v1/queue/status`);
 
     evtSource.onmessage = function (event) {
         try {

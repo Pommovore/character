@@ -167,6 +167,16 @@ Le système contrôle la quantité de traitements simultanés:
 self.executor = ThreadPoolExecutor(max_workers=5)  # Limite à 5 traitements
 ```
 
+### 6. Reverse Proxy & App Prefix
+
+L'application est conçue pour être déployée derrière un reverse proxy (ex. Nginx) pouvant servir le site sur un sous-chemin (par ex. `https://monsite.com/character`).
+
+L'architecture intègre dynamiquement ce préfixe (`APP_PREFIX` / `root_path`) sans le coder en dur :
+1. **Nginx** envoie l'en-tête `X-Forwarded-Prefix /character` vers le backend.
+2. **Uvicorn** (`run.py` avec `proxy_headers=True`) lit cet en-tête et définit le `request.scope['root_path']`.
+3. **FastAPI** et **Jinja2** injectent ce `root_path` dynamiquement dans les redirections et via une balise `<meta name="app-prefix">` générée dans `base.html`.
+4. **JavaScript (Frontend)** lit cette balise meta pour préfixer toutes ses requêtes `fetch` et `EventSource`.
+
 ## Patterns de Conception
 
 1. **Singleton**: Pour garantir une seule instance du service de stockage

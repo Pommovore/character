@@ -1,0 +1,38 @@
+[Unit]
+Description=Character — Service d'extraction de traits de caractère
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# L'utilisateur doit être celui qui a déployé l'application (pour avoir les droits sur .venv)
+# Remplacez "jack" par votre nom d'utilisateur existant sur le serveur (ex: ubuntu, root, etc.)
+User=jack
+Group=jack
+WorkingDirectory=/opt/character
+EnvironmentFile=-/opt/character/.env
+
+# Commande de démarrage via uvicorn (utilisation de l'environnement virtuel)
+# Le préfixe est géré automatiquement par ASGI grâce aux proxy_headers configurés dans run.py
+ExecStart=/opt/character/.venv/bin/python run.py
+
+# Redémarrage automatique en cas de crash
+Restart=always
+RestartSec=5
+
+# Sécurité : limiter les capacités du processus
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=true
+ReadWritePaths=-/opt/character/data
+
+# Limites de ressources raisonnables
+LimitNOFILE=65536
+TimeoutStopSec=30
+
+# Variables d'environnement supplémentaires
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target

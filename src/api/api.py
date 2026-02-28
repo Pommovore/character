@@ -13,7 +13,6 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from src import __version__
@@ -41,8 +40,18 @@ class SetupMiddleware(BaseHTTPMiddleware):
         allowed_paths = ["/setup", "/static", "/health", "/api/docs", "/api/redoc", "/api/openapi.json"]
 
         if not is_setup_done() and not any(path.startswith(p) for p in allowed_paths):
-            return RedirectResponse(url="/setup", status_code=302)
+            return RedirectResponse(url=f"{request.scope.get('root_path', '')}/setup", status_code=302)
 
+        return await call_next(request)
+
+
+class ProxyPrefixMiddleware(BaseHTTPMiddleware):
+    """Middleware qui FORCE le root_path à partir du header nginx X-Forwarded-Prefix."""
+
+    async def dispatch(self, request: Request, call_next):
+        prefix = request.headers.get("x-forwarded-prefix")
+        if prefix:
+            request.scope["root_path"] = prefix
         return await call_next(request)
 
 
@@ -90,6 +99,9 @@ def create_application(start_worker: bool = True) -> FastAPI:
         allow_headers=["*"],
     )
 
+    # Ajouter le middleware de proxy/root_path EN PREMIER (le dernier ajouté est exécuté en premier)
+    app.add_middleware(ProxyPrefixMiddleware)
+
     # Monter les fichiers statiques
     static_dir = os.path.join(os.path.dirname(__file__), "..", "static")
     if os.path.isdir(static_dir):
@@ -112,7 +124,7 @@ def create_application(start_worker: bool = True) -> FastAPI:
     async def root(request: Request):
         """Redirige la racine vers la page appropriée."""
         from src.services.auth_service import get_current_user
-        from src.database import get_db, SessionLocal
+        from src.database import SessionLocal
 
         if SessionLocal:
             db = SessionLocal()
@@ -120,12 +132,12 @@ def create_application(start_worker: bool = True) -> FastAPI:
                 user = get_current_user(request, db)
                 if user:
                     if user.role == "admin":
-                        return RedirectResponse(url="/admin", status_code=302)
-                    return RedirectResponse(url="/dashboard", status_code=302)
+                        return RedirectResponse(url=f"{request.scope.get('root_path', '')}/admin", status_code=302)
+                    return RedirectResponse(url=f"{request.scope.get('root_path', '')}/dashboard", status_code=302)
             finally:
                 db.close()
 
-        return RedirectResponse(url="/login", status_code=302)
+        return RedirectResponse(url=f"{request.scope.get('root_path', '')}/login", status_code=302)
 
     # Gestionnaire d'exceptions global
     @app.exception_handler(Exception)
@@ -153,12 +165,13 @@ def create_application(start_worker: bool = True) -> FastAPI:
             def process_request(text, directive, model_name):
                 """Fonction de traitement pour la file d'attente."""
                 extractor = TraitsExtractor(model_name)
-                traits = extractor.extract_traits(text, directive)
+                traits, validated_model = extractor.extract_traits(text, directive)
                 summary = extractor.generate_summary(traits)
                 return {
                     "traits": [{"trait": t.trait, "score": t.score, "category": t.category} for t in traits],
                     "summary": summary,
                     "model_used": model_name,
+                    "validated_model": validated_model,
                 }
 
             queue.start_worker(process_request)

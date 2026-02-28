@@ -6,3 +6,5 @@ flake8
 isort
 mypy
 httpx  # For FastAPI TestClient
+fabric
+pyyaml

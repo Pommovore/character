@@ -4,7 +4,6 @@ Ce module gère une file d'attente unique qui traite les requêtes
 d'extraction de traits une par une, dans l'ordre d'arrivée.
 """
 
-import asyncio
 import json
 import logging
 import os

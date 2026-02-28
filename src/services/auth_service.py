@@ -14,7 +14,7 @@ from typing import Optional
 
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
-from fastapi import Request, HTTPException, Depends
+from fastapi import Request, HTTPException
 
 from src.models.user import User, ApiToken, RequestLog
 

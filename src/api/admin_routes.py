@@ -7,7 +7,7 @@ et des tokens par l'administrateur du site.
 import logging
 
 from fastapi import APIRouter, Request, Depends, Form, HTTPException
-from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
@@ -37,7 +37,7 @@ def require_admin(request: Request, db: Session = Depends(get_db)) -> User:
     """
     user = get_current_user(request, db)
     if not user:
-        raise HTTPException(status_code=302, headers={"Location": "/login"})
+        raise HTTPException(status_code=302, headers={"Location": f"{request.scope.get('root_path', '')}/login"})
     if user.role != "admin":
         raise HTTPException(status_code=403, detail="Accès réservé aux administrateurs")
     return user

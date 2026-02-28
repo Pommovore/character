@@ -13,7 +13,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
-from src.database import get_db, init_db
+from src.database import get_db
 from src.models.user import User
 from src.services.auth_service import hash_password
 
@@ -40,7 +40,7 @@ def is_setup_done() -> bool:
 async def setup_page(request: Request):
     """Affiche le formulaire de configuration initiale."""
     if is_setup_done():
-        return RedirectResponse(url="/login", status_code=302)
+        return RedirectResponse(url=f"{request.scope.get('root_path', '')}/login", status_code=302)
 
     return templates.TemplateResponse("setup.html", {
         "request": request,
@@ -60,7 +60,7 @@ async def setup_submit(
 ):
     """Traite le formulaire de configuration initiale."""
     if is_setup_done():
-        return RedirectResponse(url="/login", status_code=302)
+        return RedirectResponse(url=f"{request.scope.get('root_path', '')}/login", status_code=302)
 
     # Validation
     errors = []
@@ -131,4 +131,4 @@ async def setup_submit(
             "error": f"Erreur lors de la création de l'administrateur : {str(e)}",
         })
 
-    return RedirectResponse(url="/login?setup=ok", status_code=302)
+    return RedirectResponse(url=f"{request.scope.get('root_path', '')}/login?setup=ok", status_code=302)

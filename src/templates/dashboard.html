@@ -97,6 +97,34 @@
     </div>
 </div>
 
+<!-- Préférences Utilisateur -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card bg-dark border-secondary">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-gear me-2 text-primary"></i>Préférences</h5>
+                <hr class="border-secondary">
+                <form action="{{ request.scope.get('root_path', '') }}/dashboard/model" method="POST"
+                    class="row align-items-center">
+                    <div class="col-auto">
+                        <label for="model" class="col-form-label text-muted">Modèle d'Extraction API :</label>
+                    </div>
+                    <div class="col-md-6 col-sm-8">
+                        <select name="model" id="model" class="form-select bg-dark text-white border-secondary">
+                            {% for m in available_models %}
+                            <option value="{{ m }}" {% if user.preferred_model==m %}selected{% endif %}>{{ m }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-auto">
+                        <button type="submit" class="btn btn-primary btn-sm">Enregistrer</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- File d'attente en temps réel -->
 <div class="card bg-dark border-secondary">
     <div class="card-header d-flex justify-content-between align-items-center">
@@ -166,5 +194,5 @@
 {% endblock %}
 
 {% block extra_scripts %}
-<script src="/static/js/dashboard.js"></script>
+<script src="{{ request.scope.get('root_path', '') }}/static/js/dashboard.js"></script>
 {% endblock %}

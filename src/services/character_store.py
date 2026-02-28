@@ -6,10 +6,8 @@ de caractères effectuées de manière asynchrone.
 """
 
 import threading
-import time
 import logging
 from typing import Dict, Optional, Callable, Any
-import asyncio
 from concurrent.futures import ThreadPoolExecutor
 
 from src.models.character_traits import CharacterTraitsResponse

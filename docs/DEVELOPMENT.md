@@ -127,6 +127,14 @@ Ce projet suit les directives de style PEP 8. Nous utilisons les outils suivants
 
 4. Créez une pull request sur GitHub
 
+## Déploiement (Production)
+Pour le déploiement sur un serveur de production, le projet inclut un script Python dédié (`deploy.py`) et ses modèles de configuration :
+- Configurez `config/deploy.conf` selon le serveur (hôte, port, répertoire...)
+- Les scripts Systemd (`character.service`) et Nginx (`nginx.conf`) garantissent la stabilité
+- Lancez `uv run python deploy.py --prod` depuis votre machine pour synchroniser et relancer le serveur distant automatiquement (via `rsync` et SSH).
+
+Consultez le fichier `INSTALLATION.md` pour les détails de la configuration.
+
 ## Pipeline CI/CD
 
 Le projet utilise GitHub Actions pour l'intégration et le déploiement continus :

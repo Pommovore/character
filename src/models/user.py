@@ -28,6 +28,7 @@ class User(Base):
     role = Column(
         String(20), nullable=False, default="user"
     )  # user, admin
+    preferred_model = Column(String(255), nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     # Relations

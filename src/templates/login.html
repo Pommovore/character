@@ -27,7 +27,7 @@
                 </div>
                 {% endif %}
 
-                <form method="POST" action="/login">
+                <form method="POST" action="{{ request.scope.get('root_path', '') }}/login">
                     <div class="mb-3">
                         <label for="email" class="form-label">Email</label>
                         <input type="email" class="form-control" id="email" name="email" required autofocus>
@@ -46,7 +46,8 @@
                 <hr class="my-4 border-secondary">
 
                 <div class="text-center">
-                    <a href="/register" class="text-decoration-none">Pas encore de compte ? Inscrivez-vous</a>
+                    <a href="{{ request.scope.get('root_path', '') }}/register" class="text-decoration-none">Pas encore
+                        de compte ? Inscrivez-vous</a>
                 </div>
             </div>
         </div>

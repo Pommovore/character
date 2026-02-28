@@ -5,6 +5,8 @@
  * suspension, et génération de tokens.
  */
 
+const APP_PREFIX = document.querySelector('meta[name="app-prefix"]')?.content || '';
+
 /**
  * Valide ou change le statut d'un utilisateur.
  * @param {number} userId - Identifiant de l'utilisateur
@@ -15,7 +17,7 @@ async function validateUser(userId, status) {
     formData.append('status', status);
 
     try {
-        const response = await fetch(`/admin/users/${userId}/validate`, {
+        const response = await fetch(`${APP_PREFIX}/admin/users/${userId}/validate`, {
             method: 'POST',
             body: formData,
         });
@@ -43,7 +45,7 @@ async function suspendUser(userId) {
     }
 
     try {
-        const response = await fetch(`/admin/users/${userId}/suspend`, {
+        const response = await fetch(`${APP_PREFIX}/admin/users/${userId}/suspend`, {
             method: 'POST',
         });
 
@@ -88,7 +90,7 @@ async function generateToken() {
     formData.append('source', source);
 
     try {
-        const response = await fetch(`/admin/users/${userId}/token`, {
+        const response = await fetch(`${APP_PREFIX}/admin/users/${userId}/token`, {
             method: 'POST',
             body: formData,
         });
@@ -140,7 +142,7 @@ async function generateRandomSource() {
     const userId = document.getElementById('modal-user-id').value;
 
     try {
-        const response = await fetch(`/admin/users/${userId}/token/random`, {
+        const response = await fetch(`${APP_PREFIX}/admin/users/${userId}/token/random`, {
             method: 'POST',
         });
 

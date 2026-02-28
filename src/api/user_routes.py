@@ -21,6 +21,7 @@ from src.services.auth_service import (
     get_current_user, get_remaining_requests
 )
 from src.services.request_queue import RequestQueue
+from src.config import get_available_models
 
 # Configuration du logging
 logger = logging.getLogger(__name__)
@@ -76,8 +77,10 @@ async def login_submit(
 
     # Créer le token JWT et le stocker dans un cookie
     token = create_access_token({"user_id": user.id, "email": user.email})
-    redirect_url = "/admin" if user.role == "admin" else "/dashboard"
-    response = RedirectResponse(url=redirect_url, status_code=302)
+    redirect_url = f"{request.scope.get('root_path', '')}/admin" if user.role == "admin" else f"{request.scope.get('root_path', '')}/dashboard"
+    root_path = request.scope.get("root_path", "")
+    redirect = root_path + redirect_url
+    response = RedirectResponse(url=redirect, status_code=302)
     response.set_cookie(
         key="access_token",
         value=token,
@@ -141,7 +144,7 @@ async def register_submit(
 
     logger.info(f"Nouvel utilisateur inscrit (en attente de validation) : {email}")
 
-    return RedirectResponse(url="/login?registered=ok", status_code=302)
+    return RedirectResponse(url=f"{request.scope.get('root_path', '')}/login?registered=ok", status_code=302)
 
 
 @router.get("/dashboard", response_class=HTMLResponse)
@@ -152,7 +155,7 @@ async def dashboard_page(
     """Affiche le tableau de bord de l'utilisateur."""
     user = get_current_user(request, db)
     if not user:
-        return RedirectResponse(url="/login", status_code=302)
+        return RedirectResponse(url=f"{request.scope.get('root_path', '')}/login", status_code=302)
 
     # Récupérer le token actif
     active_token = db.query(ApiToken).filter(
@@ -173,13 +176,34 @@ async def dashboard_page(
         "active_token": active_token,
         "remaining_requests": remaining,
         "queue_items": queue_items,
+        "available_models": get_available_models(),
     })
 
 
+@router.post("/dashboard/model")
+async def update_preferred_model(
+    request: Request,
+    model: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    """Met à jour le modèle préféré de l'utilisateur."""
+    user = get_current_user(request, db)
+    if not user:
+        raise HTTPException(status_code=401, detail="Non authentifié")
+        
+    models = get_available_models()
+    if model in models:
+        user.preferred_model = model
+        db.commit()
+        logger.info(f"Modèle préféré mis à jour pour {user.email} -> {model}")
+        
+    return RedirectResponse(url=f"{request.scope.get('root_path', '')}/dashboard", status_code=302)
+
+
 @router.get("/logout")
-async def logout():
+async def logout(request: Request):
     """Déconnecte l'utilisateur."""
-    response = RedirectResponse(url="/login", status_code=302)
+    response = RedirectResponse(url=f"{request.scope.get('root_path', '')}/login", status_code=302)
     response.delete_cookie("access_token")
     return response
 

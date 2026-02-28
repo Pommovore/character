@@ -4,7 +4,7 @@ Ce module définit les modèles de données utilisés pour la validation des ent
 dans l'API d'extraction de traits de caractère.
 """
 
-from typing import Dict, List, Optional
+from typing import List, Optional
 from pydantic import BaseModel, Field
 
 
@@ -34,6 +34,7 @@ class CharacterTraitsResponse(BaseModel):
     traits: List[CharacterTrait] = Field(..., description="Liste des traits de caractère extraits")
     summary: Optional[str] = Field(None, description="Résumé des principaux traits du personnage")
     model_used: str = Field(..., description="Nom du modèle utilisé pour l'extraction")
+    validated_model: bool = Field(True, description="Indique si le modèle était valide pour l'API Hugging Face")
     request_id: str = Field(..., description="Identifiant unique de la demande")
     directive: Optional[str] = Field(None, description="Directive utilisée pour l'analyse")
     status: str = Field("completed", description="État du traitement (pending/completed)")

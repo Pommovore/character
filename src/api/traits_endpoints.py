@@ -17,10 +17,10 @@ from src.models.character_traits import (
     CharacterProcessingStatus,
 )
 from src.models.user import RequestLog
-from src.services.traits_extractor import TraitsExtractor
 from src.services.auth_service import validate_api_token
 from src.services.request_queue import RequestQueue, QueueItem
 from src.utils.url_fetcher import is_url, fetch_text_content
+from src.config import get_default_model
 
 # Configuration du logging
 logger = logging.getLogger(__name__)
@@ -93,6 +93,12 @@ async def extract_character_traits(
             message=f"Requête déjà connue (statut: {existing['status']})"
         )
 
+    # Détermination du modèle à utiliser
+    # 1. Spécifié dans la requête API explicitement
+    # 2. Modèle préféré de l'utilisateur en base
+    # 3. Modèle par défaut de l'application
+    model_name_to_use = description.model_name or user.preferred_model or get_default_model()
+    
     # Ajouter à la file d'attente
     queue_item = QueueItem(
         request_id=request_id,
@@ -100,7 +106,7 @@ async def extract_character_traits(
         user_email=user.email,
         text=text,
         directive=description.directive,
-        model_name=description.model_name,
+        model_name=model_name_to_use,
     )
     position = queue.enqueue(queue_item)
 
@@ -157,8 +163,9 @@ async def get_character_result(request_id: str):
     traits = [CharacterTrait(**t) for t in result["traits"]]
     return CharacterTraitsResponse(
         traits=traits,
-        summary=result["summary"],
-        model_used=result["model_used"],
+        summary=result.get("summary"),
+        model_used=result.get("model_used"),
+        validated_model=result.get("validated_model", True),
         request_id=request_id,
         status="completed",
     )

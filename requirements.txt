@@ -1,9 +1,6 @@
 fastapi
 uvicorn
 pydantic
-transformers
-torch
-numpy
 python-multipart
 huggingface-hub
 httpx
@@ -14,4 +11,3 @@ python-jose[cryptography]
 jinja2
 python-dotenv
 aiohttp
-huggingface_hub

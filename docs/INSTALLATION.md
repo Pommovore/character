@@ -57,6 +57,51 @@ docker run -p 8000:8000 extracteur-traits-caractere
 
 L'API sera disponible à l'adresse `http://localhost:8000`.
 
+## Déploiement sur serveur distant (Production)
+
+Pour un déploiement hors-Docker sur un serveur (ex: VPS sous Linux) utilisant Nginx et Systemd.
+
+### 1. Configuration préalable
+
+1.  Modifiez le fichier `config/deploy.conf` avec vos paramètres de serveur :
+    ```yaml
+    deploy:
+      machine_name: "votre.serveur.com"
+      port: 8886
+      target_directory: "/opt/character/"
+      app_prefix: "/character"
+    ```
+2.  Assurez-vous que l'authentification par clé SSH (sans mot de passe) est configurée depuis votre machine vers le serveur cible (`machine_name`).
+3.  Assurez-vous que les paquets de base Python sont installés sur le serveur (`python3`, `python3-venv`).
+
+### 2. Configuration du Serveur (Une seule fois)
+
+Des modèles de configuration sont fournis dans le dossier `config/`. Vous devez les copier et les adapter sur votre serveur.
+
+1.  **Service Systemd** : Copiez le contenu de `config/character.service` dans `/etc/systemd/system/character.service` sur votre serveur.
+2.  **Reverse Proxy Nginx** : Intégrez le contenu de `config/nginx.conf` dans votre configuration Nginx (`/etc/nginx/sites-available/default` ou votre config de domaine).
+3.  Activez et démarrez les services sur le serveur :
+    ```bash
+    sudo systemctl daemon-reload
+    sudo systemctl enable character
+    sudo systemctl restart character
+    sudo systemctl restart nginx
+    ```
+
+### 3. Exécuter le déploiement
+
+Depuis votre machine de développement, lancez le script de déploiement (qui utilise `rsync` et `fabric`) :
+
+```bash
+uv run python deploy.py --prod
+```
+
+Ce script va automatiquement :
+- Synchroniser les fichiers source vers le `target_directory`.
+- Ignorer les fichiers locaux sensibles (`.env`, bases de données PDO, dossiers git).
+- Se connecter en SSH pour créer l'environnement virtuel et installer les dépendances.
+- Redémarrer le service Systemd `character.service`.
+
 ## Variables d'Environnement
 
 L'application peut être configurée à l'aide des variables d'environnement suivantes :

@@ -8,7 +8,7 @@ import logging
 import os
 import json
 import re
-from typing import Dict, List, Optional, Tuple
+from typing import List, Optional
 
 from huggingface_hub import InferenceClient
 from src.models.character_traits import CharacterTrait
@@ -36,7 +36,7 @@ class TraitsExtractor:
         logger.info(f"Initialisation de TraitsExtractor avec le modèle : {self.model_name}")
         self.client = InferenceClient(model=self.model_name, token=self.token)
 
-    def extract_traits(self, text: str, directive: Optional[str] = None) -> List[CharacterTrait]:
+    def extract_traits(self, text: str, directive: Optional[str] = None) -> tuple[List[CharacterTrait], bool]:
         """
         Extrait les traits de caractère en interrogeant le LLM via un prompt structuré.
 
@@ -45,7 +45,7 @@ class TraitsExtractor:
             directive: Instructions supplémentaires
 
         Returns:
-            Liste d'objets CharacterTrait
+            Tuple: Liste d'objets CharacterTrait, et un booléen (validated_model)
         """
         logger.info(f"Extraction des traits (LLM) pour un texte de {len(text)} caractères")
         
@@ -77,12 +77,20 @@ class TraitsExtractor:
             raw_result = response.choices[0].message.content
             logger.debug(f"Réponse brute du modèle : {raw_result}")
             
-            return self._parse_llm_response(raw_result)
+            
+            return self._parse_llm_response(raw_result), True
             
         except Exception as e:
+            error_msg = str(e).lower()
             logger.error(f"Erreur lors de l'appel à l'API Hugging Face : {str(e)}")
-            # Fallback vers une liste vide ou un trait d'erreur
-            return []
+            
+            # Vérifier si c'est une erreur de type modèle non supporté
+            if "model_not_supported" in error_msg or "not found" in error_msg:
+                # Fallback propre indiquant que le modèle est invalide
+                return [], False
+                
+            # Autre erreur, on retourne vide mais avec modèle potentiellement valide (timeout, surcharge...)
+            return [], True
 
     def _parse_llm_response(self, content: str) -> List[CharacterTrait]:
         """Tente de parser la réponse JSON du modèle."""
