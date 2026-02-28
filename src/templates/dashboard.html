@@ -149,7 +149,7 @@
             </div>
         </div>
 
-        <!-- Liste des requêtes -->
+        <!-- Liste des requêtes en cours/attente -->
         <div class="table-responsive">
             <table class="table table-dark table-hover mb-0">
                 <thead>
@@ -160,15 +160,16 @@
                     </tr>
                 </thead>
                 <tbody id="queue-table-body">
+                    {% set active_count = namespace(value=0) %}
                     {% for item in queue_items %}
+                    {% if item.status in ('waiting', 'processing') %}
+                    {% set active_count.value = active_count.value + 1 %}
                     <tr>
                         <td class="font-monospace small">{{ item.request_id }}</td>
                         <td>
                             <span class="badge
                                 {% if item.status == 'waiting' %}bg-warning text-dark
                                 {% elif item.status == 'processing' %}bg-primary
-                                {% elif item.status == 'completed' %}bg-success
-                                {% elif item.status == 'failed' %}bg-danger
                                 {% endif %}">
                                 {{ item.status }}
                             </span>
@@ -177,12 +178,77 @@
                             {% if item.position >= 0 %}#{{ item.position + 1 }}{% else %}—{% endif %}
                         </td>
                     </tr>
+                    {% endif %}
                     {% endfor %}
-                    {% if not queue_items %}
+                    {% if active_count.value == 0 %}
                     <tr id="no-requests-row">
                         <td colspan="3" class="text-center text-muted py-4">
                             <i class="bi bi-inbox display-6 d-block mb-2"></i>
-                            Aucune requête pour le moment
+                            Aucune requête en attente
+                        </td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Historique des requêtes terminées -->
+<div class="card bg-dark border-secondary mt-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">
+            <i class="bi bi-clock-history me-2"></i>Historique
+        </h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-dark table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>ID requête</th>
+                        <th>Statut</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="history-table-body">
+                    {% set history_count = namespace(value=0) %}
+                    {% for item in queue_items %}
+                    {% if item.status in ('completed', 'failed') %}
+                    {% set history_count.value = history_count.value + 1 %}
+                    <tr>
+                        <td class="font-monospace small">{{ item.request_id }}</td>
+                        <td>
+                            <span class="badge
+                                {% if item.status == 'completed' %}bg-success
+                                {% elif item.status == 'failed' %}bg-danger
+                                {% endif %}">
+                                {{ item.status }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if item.status == 'completed' %}
+                            <a href="{{ request.scope.get('root_path', '') }}/api/v1/traits/get_character/{{ item.request_id }}"
+                                target="_blank" class="btn btn-sm btn-outline-info">
+                                <i class="bi bi-download"></i> JSON
+                            </a>
+                            {% elif item.status == 'failed' %}
+                            <span class="text-danger small"
+                                title="{{ item.error if item.error else 'Erreur inconnue' }}">
+                                <i class="bi bi-exclamation-triangle"></i> Erreur
+                            </span>
+                            {% else %}
+                            —
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endif %}
+                    {% endfor %}
+                    {% if history_count.value == 0 %}
+                    <tr id="no-history-row">
+                        <td colspan="3" class="text-center text-muted py-4">
+                            <i class="bi bi-journal-x display-6 d-block mb-2"></i>
+                            Aucun historique disponible
                         </td>
                     </tr>
                     {% endif %}

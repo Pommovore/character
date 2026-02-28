@@ -239,6 +239,9 @@ async def queue_sse(
             status = queue.get_queue_status(user.id)
             remaining = get_remaining_requests(user, db)
             status["remaining_requests"] = remaining
+            
+            # Injecter l'historique complet pour que le JS gère les 2 tableaux
+            status["items"] = queue.get_user_recent_items(user.id)
 
             yield f"data: {json.dumps(status, default=str)}\n\n"
             await asyncio.sleep(2)

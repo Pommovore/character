@@ -82,29 +82,72 @@ function updateQueueDisplay(data) {
         processingSection.classList.add('d-none');
     }
 
-    // Mettre à jour le tableau des requêtes
-    const tableBody = document.getElementById('queue-table-body');
-    if (!tableBody) return;
+    // Mettre à jour les tableaux
+    const queueTableBody = document.getElementById('queue-table-body');
+    const historyTableBody = document.getElementById('history-table-body');
+    if (!queueTableBody || !historyTableBody) return;
+
+    let activeItems = 0;
+    let queueHtml = '';
+    let historyHtml = '';
 
     if (data.items && data.items.length > 0) {
-        let html = '';
         data.items.forEach(function (item) {
             const statusClass = getStatusClass(item.status);
-            html += `
-                <tr>
-                    <td class="font-monospace small">${item.request_id}</td>
-                    <td><span class="badge ${statusClass}">${item.status}</span></td>
-                    <td>${item.position >= 0 ? '#' + (item.position + 1) : '—'}</td>
-                </tr>
-            `;
+
+            if (item.status === 'waiting' || item.status === 'processing') {
+                activeItems++;
+                queueHtml += `
+                    <tr>
+                        <td class="font-monospace small">${item.request_id}</td>
+                        <td><span class="badge ${statusClass}">${item.status}</span></td>
+                        <td>${item.position >= 0 ? '#' + (item.position + 1) : '—'}</td>
+                    </tr>
+                `;
+            } else if (item.status === 'completed' || item.status === 'failed') {
+                let actionHtml = '—';
+                if (item.status === 'completed') {
+                    actionHtml = `
+                    <a href="${APP_PREFIX}/api/v1/traits/get_character/${item.request_id}" target="_blank" class="btn btn-sm btn-outline-info">
+                        <i class="bi bi-download"></i> JSON
+                    </a>`;
+                } else if (item.status === 'failed') {
+                    const errorMsg = item.error ? item.error.replace(/"/g, '&quot;') : 'Erreur inconnue';
+                    actionHtml = `<span class="text-danger small" title="${errorMsg}"><i class="bi bi-exclamation-triangle"></i> Erreur</span>`;
+                }
+
+                historyHtml += `
+                    <tr>
+                        <td class="font-monospace small">${item.request_id}</td>
+                        <td><span class="badge ${statusClass}">${item.status}</span></td>
+                        <td>${actionHtml}</td>
+                    </tr>
+                `;
+            }
         });
-        tableBody.innerHTML = html;
-    } else if (!data.processing) {
-        tableBody.innerHTML = `
+    }
+
+    if (activeItems > 0) {
+        queueTableBody.innerHTML = queueHtml;
+    } else {
+        queueTableBody.innerHTML = `
             <tr id="no-requests-row">
                 <td colspan="3" class="text-center text-muted py-4">
                     <i class="bi bi-inbox display-6 d-block mb-2"></i>
-                    Aucune requête pour le moment
+                    Aucune requête en attente
+                </td>
+            </tr>
+        `;
+    }
+
+    if (historyHtml.length > 0) {
+        historyTableBody.innerHTML = historyHtml;
+    } else {
+        historyTableBody.innerHTML = `
+            <tr id="no-history-row">
+                <td colspan="3" class="text-center text-muted py-4">
+                    <i class="bi bi-journal-x display-6 d-block mb-2"></i>
+                    Aucun historique disponible
                 </td>
             </tr>
         `;
