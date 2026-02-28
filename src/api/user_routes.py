@@ -79,9 +79,7 @@ async def login_submit(
     # Créer le token JWT et le stocker dans un cookie
     token = create_access_token({"user_id": user.id, "email": user.email})
     redirect_url = f"{request.scope.get('root_path', '')}/admin" if user.role == "admin" else f"{request.scope.get('root_path', '')}/dashboard"
-    root_path = request.scope.get("root_path", "")
-    redirect = root_path + redirect_url
-    response = RedirectResponse(url=redirect, status_code=302)
+    response = RedirectResponse(url=redirect_url, status_code=302)
     response.set_cookie(
         key="access_token",
         value=token,
