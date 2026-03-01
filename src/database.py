@@ -34,9 +34,14 @@ def init_db():
     """
     global engine, SessionLocal
 
-    # Créer le répertoire data/db s'il n'existe pas
-    os.makedirs(DB_DIR, exist_ok=True)
-    logger.info(f"Répertoire de la base de données : {DB_DIR}")
+    import src.models.user  # Importer les modèles pour qu'ils soient enregistrés
+    import src.models.extraction_result  # Modèle des résultats
+
+    # Créer le répertoire de la base de données s'il n'existe pas
+    db_dir = os.path.dirname(DATABASE_URL.replace("sqlite:///", ""))
+    if db_dir and db_dir != "sqlite://":  # Ignorer pour la base de données en mémoire
+        os.makedirs(db_dir, exist_ok=True)
+        logger.info(f"Répertoire de la base de données : {db_dir}")
 
     from sqlalchemy.pool import NullPool
 

@@ -36,7 +36,6 @@ def mock_extractor():
 def test_extract_traits_endpoint(mock_validate, test_app):
     """Teste le point de terminaison d'extraction de traits."""
     # Préparation
-    mock_get_extractor.return_value = mock_extractor
     mock_validate.return_value = (MagicMock(email="test@example.com", id=1), MagicMock(id=1))
     
     # Action
@@ -75,7 +74,6 @@ def test_extract_traits_unauthorized(test_app):
 def test_extract_traits_with_short_text(mock_validate, test_app):
     """Teste le point de terminaison d'extraction de traits avec un texte trop court."""
     # Préparation
-    mock_get_extractor.return_value = mock_extractor
     mock_validate.return_value = (MagicMock(email="test@example.com", id=1), MagicMock(id=1))
     
     # Action
@@ -107,7 +105,6 @@ def test_health_endpoint(test_app):
 def test_extract_traits_with_url(mock_is_url, mock_fetch, mock_validate, test_app):
     """Teste l'extraction de traits lorsque le texte est une URL."""
     # Préparation
-    mock_get_extractor.return_value = mock_extractor
     mock_is_url.return_value = True
     mock_fetch.return_value = "Harry Potter est un jeune sorcier courageux et loyal."
     mock_validate.return_value = (MagicMock(email="test@example.com", id=1), MagicMock(id=1))
@@ -135,7 +132,6 @@ def test_extract_traits_with_url(mock_is_url, mock_fetch, mock_validate, test_ap
 def test_extract_traits_with_invalid_url(mock_is_url, mock_fetch, mock_validate, test_app):
     """Teste le comportement lorsque le téléchargement de l'URL échoue."""
     # Préparation
-    mock_get_extractor.return_value = mock_extractor
     mock_is_url.return_value = True
     mock_fetch.side_effect = ValueError("Erreur HTTP 404 lors du téléchargement de l'URL.")
     mock_validate.return_value = (MagicMock(email="test@example.com", id=1), MagicMock(id=1))
@@ -162,7 +158,6 @@ def test_extract_traits_with_invalid_url(mock_is_url, mock_fetch, mock_validate,
 def test_extract_traits_normal_text_not_affected(mock_is_url, mock_fetch, mock_validate, test_app):
     """Vérifie que le texte normal n'est pas affecté par la détection d'URL."""
     # Préparation
-    mock_get_extractor.return_value = mock_extractor
     mock_is_url.return_value = False
     mock_validate.return_value = (MagicMock(email="test@example.com", id=1), MagicMock(id=1))
 

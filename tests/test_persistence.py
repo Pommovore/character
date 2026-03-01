@@ -9,12 +9,21 @@ from src.services.request_queue import QueueItem, RequestQueue, QueueItemStatus
 from src.utils.path_utils import sanitize_email
 
 @pytest.fixture
-def cleanup_results():
-    """Nettoie le dossier data/results après les tests."""
-    yield
-    results_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data", "results"))
-    if os.path.exists(results_dir):
-        shutil.rmtree(results_dir)
+def db_session():
+    import src.database
+    
+    if src.database.engine is None:
+        src.database.init_db()
+    else:
+        # Just in case the engine is already initialized, enforce creation of tables
+        src.database.Base.metadata.create_all(bind=src.database.engine)
+    
+    db = src.database.SessionLocal()
+    try:
+        yield db
+    finally:
+        db.rollback()
+        db.close()
 
 def test_sanitize_email():
     """Teste la fonction de sanitisation des e-mails."""
@@ -22,8 +31,13 @@ def test_sanitize_email():
     assert sanitize_email("Jean.Doe-99@example.com") == "jean_doe_99_at_example_com"
     assert sanitize_email("user+tag@domain.co.uk") == "user_tag_at_domain_co_uk"
 
-def test_persist_result(cleanup_results):
-    """Teste la sauvegarde d'un résultat sur le disque via RequestQueue."""
+def test_persist_result(db_session):
+    """Teste la sauvegarde d'un résultat en base de données via RequestQueue."""
+    # Nettoyer avant
+    from src.models.extraction_result import ExtractionResult
+    db_session.query(ExtractionResult).filter_by(request_id="test-persist-001").delete()
+    db_session.commit()
+
     queue = RequestQueue()
     
     item = QueueItem(
@@ -36,17 +50,13 @@ def test_persist_result(cleanup_results):
     )
     
     # Appel de la méthode de persistance (privée)
-    queue._persist_result(item)
+    queue._persist_to_db(item)
     
-    # Vérification du fichier
-    sanitized = sanitize_email("test@example.com")
-    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-    expected_path = os.path.join(base_dir, "data", "results", sanitized, "test-persist-001.json")
+    # Vérification en base de données
+    saved_result = db_session.query(ExtractionResult).filter_by(request_id="test-persist-001").first()
     
-    assert os.path.exists(expected_path)
-    
-    with open(expected_path, "r", encoding="utf-8") as f:
-        data = json.load(f)
-        assert data["request_id"] == "test-persist-001"
-        assert data["user_email"] == "test@example.com"
-        assert data["result"]["summary"] == "Test"
+    assert saved_result is not None
+    assert saved_result.request_id == "test-persist-001"
+    assert saved_result.user_email == "test@example.com"
+    assert saved_result.status == "completed"
+    assert saved_result.result_json["summary"] == "Test"

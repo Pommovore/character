@@ -4,16 +4,8 @@ Ce module fournit le point d'entrée pour exécuter l'API avec Uvicorn.
 """
 
 import logging
-import uvicorn
 import os
-
-import sys
-
-# Ajouter le répertoire parent au PYTHONPATH
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-
-# Configuration du logging
+import uvicorn
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",

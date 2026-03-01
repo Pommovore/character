@@ -64,7 +64,6 @@ class RequestQueue:
         if self._initialized:
             return
         self._queue: List[QueueItem] = []
-        self._results: Dict[str, QueueItem] = {}
         self._processing: Optional[QueueItem] = None
         self._process_func: Optional[Callable] = None
         self._worker_thread: Optional[threading.Thread] = None
@@ -116,21 +115,23 @@ class RequestQueue:
                     item.status = QueueItemStatus.COMPLETED
                     logger.info(f"Requête {item.request_id} traitée avec succès")
                     
-                    # Sauvegarder le résultat sur le disque
-                    self._persist_result(item)
+                    
+                    # Sauvegarder le résultat OU l'erreur en base de données
+                    self._persist_to_db(item)
                 else:
                     item.status = QueueItemStatus.FAILED
                     item.error = "Aucune fonction de traitement configurée"
                     logger.error("Pas de fonction de traitement configurée")
+                    self._persist_to_db(item)
             except Exception as e:
                 item.status = QueueItemStatus.FAILED
                 item.error = str(e)
                 logger.error(f"Erreur lors du traitement de {item.request_id} : {str(e)}")
+                self._persist_to_db(item)
             finally:
                 with self._queue_lock:
                     self._processing = None
-                    self._results[item.request_id] = item
-                    # Mettre à jour les positions
+                    # Mettre à jour les positions (l'élément est libéré de la mémoire RAM de la file)
                     self._update_positions()
 
                 # Notifier le webhook si configuré
@@ -189,39 +190,42 @@ class RequestQueue:
         # Exécuter dans un thread séparé pour ne pas bloquer la boucle principale
         threading.Thread(target=perform_request, daemon=True).start()
 
-    def _persist_result(self, item: QueueItem):
+    def _persist_to_db(self, item: QueueItem):
         """
-        Sauvegarde le résultat de la requête dans un fichier JSON.
+        Sauvegarde le résultat de la requête (succès ou échec) en base de données.
+        """
+        from src.database import SessionLocal
+        from src.models.extraction_result import ExtractionResult
         
-        Les fichiers sont organisés par utilisateur (e-mail sanitisé) 
-        dans le répertoire 'data/results/'.
-        """
+        db = SessionLocal()
         try:
-            # Préparer le répertoire de destination
-            sanitized_email = sanitize_email(item.user_email)
-            base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-            results_dir = os.path.join(base_dir, "data", "results", sanitized_email)
-            
-            os.makedirs(results_dir, exist_ok=True)
-            
-            # Préparer le contenu du fichier
-            file_path = os.path.join(results_dir, f"{item.request_id}.json")
-            data = {
-                "request_id": item.request_id,
-                "user_email": item.user_email,
-                "status": item.status.value,
-                "result": item.result,
-                "timestamp": item.created_at
-            }
-            
-            # Écrire le fichier
-            with open(file_path, "w", encoding="utf-8") as f:
-                json.dump(data, f, indent=2, ensure_ascii=False)
-            
-            logger.info(f"Résultat pour {item.request_id} sauvegardé dans {file_path}")
-            
+            # Sérialisation du résultat si c'est un dict ou une liste
+            result_data = None
+            if item.result is not None:
+                # Si c'est un objet (ex: CharacterTraitsResponse Pydantic), on le cast en dict
+                if hasattr(item.result, "model_dump"):
+                    result_data = item.result.model_dump()
+                elif hasattr(item.result, "dict"):
+                    result_data = item.result.dict()
+                else:
+                    result_data = item.result
+
+            db_result = ExtractionResult(
+                request_id=item.request_id,
+                user_id=item.user_id,
+                user_email=item.user_email,
+                status=item.status.value,
+                result_json=result_data,
+                error_message=item.error,
+            )
+            db.add(db_result)
+            db.commit()
+            logger.info(f"Résultat pour {item.request_id} ({item.status.value}) sauvegardé en BDD")
         except Exception as e:
-            logger.error(f"Échec de la sauvegarde du résultat pour {item.request_id} : {str(e)}")
+            db.rollback()
+            logger.error(f"Échec de la sauvegarde DB pour {item.request_id} : {str(e)}")
+        finally:
+            db.close()
 
     def enqueue(self, item: QueueItem) -> int:
         """
@@ -340,15 +344,22 @@ class RequestQueue:
                         "position": item.position,
                     }
 
-            # Vérifier dans les résultats
-            if request_id in self._results:
-                result_item = self._results[request_id]
-                return {
-                    "request_id": request_id,
-                    "status": result_item.status.value,
-                    "result": result_item.result,
-                    "error": result_item.error,
-                }
+            # Si pas trouvé en file, vérifier en base de données
+            from src.database import SessionLocal
+            from src.models.extraction_result import ExtractionResult
+            
+            db = SessionLocal()
+            try:
+                result_item = db.query(ExtractionResult).filter(ExtractionResult.request_id == request_id).first()
+                if result_item:
+                    return {
+                        "request_id": request_id,
+                        "status": result_item.status,
+                        "result": result_item.result_json,
+                        "error": result_item.error_message,
+                    }
+            finally:
+                db.close()
 
         return None
 
@@ -363,11 +374,10 @@ class RequestQueue:
             Résultat ou None
         """
         self._initialize()
-        with self._queue_lock:
-            item = self._results.get(request_id)
-            if item and item.status == QueueItemStatus.COMPLETED:
-                return item.result
-            return None
+        status = self.get_request_status(request_id)
+        if status and status.get("status") == QueueItemStatus.COMPLETED.value:
+            return status.get("result")
+        return None
 
     def get_user_recent_items(self, user_id: int, limit: int = 20) -> List[dict]:
         """
@@ -385,19 +395,32 @@ class RequestQueue:
         # Utiliser un dictionnaire pour éviter les doublons par request_id
         items_dict = {}
 
-        with self._queue_lock:
-            # 1. Résultats terminés (base de l'historique)
-            for req_id, item in self._results.items():
-                if item.user_id == user_id:
-                    items_dict[item.request_id] = {
-                        "request_id": item.request_id,
-                        "status": item.status.value,
-                        "position": -1,
-                        "created_at": item.created_at,
-                        "error": item.error,
-                    }
+        # 1. Récupérer l'historique complet depuis la base de données
+        from src.database import SessionLocal
+        from src.models.extraction_result import ExtractionResult
+        
+        db = SessionLocal()
+        try:
+            # 20 résultats les plus récents en BDD
+            db_results = (db.query(ExtractionResult)
+                          .filter(ExtractionResult.user_id == user_id)
+                          .order_by(ExtractionResult.created_at.desc())
+                          .limit(limit)
+                          .all())
+            
+            for db_res in db_results:
+                items_dict[db_res.request_id] = {
+                    "request_id": db_res.request_id,
+                    "status": db_res.status,
+                    "position": -1,
+                    "created_at": db_res.created_at.timestamp(),
+                    "error": db_res.error_message,
+                }
+        finally:
+            db.close()
 
-            # 2. En file d'attente (écrase si doublon, plus récent dans le cycle)
+        with self._queue_lock:
+            # 2. Éléments en file d'attente (écrase la vue BDD s'il y a relance)
             for item in self._queue:
                 if item.user_id == user_id:
                     items_dict[item.request_id] = {
@@ -407,7 +430,7 @@ class RequestQueue:
                         "created_at": item.created_at,
                     }
 
-            # 3. En cours de traitement (prioritaire pour l'affichage en cours)
+            # 3. Élément en cours de traitement (prioritaire pour l'affichage en cours)
             if self._processing and self._processing.user_id == user_id and self._processing.status == QueueItemStatus.PROCESSING:
                 items_dict[self._processing.request_id] = {
                     "request_id": self._processing.request_id,

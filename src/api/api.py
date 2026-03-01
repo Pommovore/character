@@ -22,11 +22,7 @@ from src.api.setup_routes import router as setup_router, is_setup_done
 from src.api.admin_routes import router as admin_router
 from src.api.user_routes import router as user_router
 
-# Configuration du logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-)
+# Initialisation du logger pour ce module
 logger = logging.getLogger(__name__)
 
 
@@ -95,12 +91,17 @@ def create_application(start_worker: bool = True) -> FastAPI:
     # Ajouter le middleware de setup
     app.add_middleware(SetupMiddleware)
 
-    # Ajouter le middleware CORS
-    allowed_origins = os.environ.get("ALLOWED_ORIGINS", "*").split(",")
+    # Ajouter le middleware CORS (Fix Audit 3.1)
+    allowed_origins_str = os.environ.get("ALLOWED_ORIGINS", "*")
+    allowed_origins = [o.strip() for o in allowed_origins_str.split(",") if o.strip()]
+    
+    # Sécurité: Ne jamais autoriser les credentials avec le wildcard "*"
+    allow_credentials = "*" not in allowed_origins
+
     app.add_middleware(
         CORSMiddleware,
         allow_origins=allowed_origins,
-        allow_credentials=True,
+        allow_credentials=allow_credentials,
         allow_methods=["*"],
         allow_headers=["*"],
     )

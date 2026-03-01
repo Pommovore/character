@@ -6,7 +6,6 @@ Les requêtes sont authentifiées par token API et soumises à une file d'attent
 """
 
 import logging
-from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Depends, Header, Request
 from sqlalchemy.orm import Session
@@ -36,7 +35,7 @@ async def extract_character_traits(
     description: CharacterDescription,
     authorization: str = Header(None, alias="Authorization"),
     token: str = Header(None, alias="token"),
-    webhook: Optional[str] = Header(None),
+    webhook: str | None = Header(None),
     db: Session = Depends(get_db),
 ) -> CharacterProcessingStatus:
     """
@@ -161,7 +160,9 @@ async def get_character_result(request_id: str):
 
     if status["status"] in ("waiting", "processing"):
         logger.info(f"Traitement en cours pour l'ID: {request_id}")
-        raise HTTPException(status_code=202, detail="Traitement en cours")
+        # Audit 5.7 : Ne pas lever d'erreur pour un 202
+        from fastapi.responses import JSONResponse
+        return JSONResponse(status_code=202, content={"detail": "Traitement en cours"})
 
     if status["status"] == "failed":
         logger.error(f"Traitement échoué pour l'ID: {request_id}")
