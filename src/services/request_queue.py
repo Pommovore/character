@@ -372,6 +372,7 @@ class RequestQueue:
     def get_user_recent_items(self, user_id: int, limit: int = 20) -> List[dict]:
         """
         Récupère les éléments récents d'un utilisateur (en file + terminés).
+        Garantit l'absence de doublons par request_id.
 
         Args:
             user_id: Identifiant de l'utilisateur
@@ -381,38 +382,41 @@ class RequestQueue:
             Liste de dictionnaires décrivant les éléments
         """
         self._initialize()
-        items = []
+        # Utiliser un dictionnaire pour éviter les doublons par request_id
+        items_dict = {}
+
         with self._queue_lock:
-            # En cours de traitement (seulement si le statut est encore processing)
-            if self._processing and self._processing.user_id == user_id and self._processing.status == QueueItemStatus.PROCESSING:
-                items.append({
-                    "request_id": self._processing.request_id,
-                    "status": self._processing.status.value,
-                    "position": 0,
-                    "created_at": self._processing.created_at,
-                })
-
-            # En file d'attente
-            for item in self._queue:
-                if item.user_id == user_id:
-                    items.append({
-                        "request_id": item.request_id,
-                        "status": item.status.value,
-                        "position": item.position,
-                        "created_at": item.created_at,
-                    })
-
-            # Résultats terminés
+            # 1. Résultats terminés (base de l'historique)
             for req_id, item in self._results.items():
                 if item.user_id == user_id:
-                    items.append({
+                    items_dict[item.request_id] = {
                         "request_id": item.request_id,
                         "status": item.status.value,
                         "position": -1,
                         "created_at": item.created_at,
                         "error": item.error,
-                    })
+                    }
 
-        # Trier par date de création (plus récent en premier) et limiter
+            # 2. En file d'attente (écrase si doublon, plus récent dans le cycle)
+            for item in self._queue:
+                if item.user_id == user_id:
+                    items_dict[item.request_id] = {
+                        "request_id": item.request_id,
+                        "status": item.status.value,
+                        "position": item.position,
+                        "created_at": item.created_at,
+                    }
+
+            # 3. En cours de traitement (prioritaire pour l'affichage en cours)
+            if self._processing and self._processing.user_id == user_id and self._processing.status == QueueItemStatus.PROCESSING:
+                items_dict[self._processing.request_id] = {
+                    "request_id": self._processing.request_id,
+                    "status": self._processing.status.value,
+                    "position": 0,
+                    "created_at": self._processing.created_at,
+                }
+
+        # Convertir en liste, trier par date et limiter
+        items = list(items_dict.values())
         items.sort(key=lambda x: x["created_at"], reverse=True)
         return items[:limit]

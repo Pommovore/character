@@ -213,14 +213,13 @@ async def logout(request: Request):
 
 
 @router.get("/api/v1/queue/status")
-async def queue_sse(
+async def queue_status_endpoint(
     request: Request,
     db: Session = Depends(get_db),
 ):
     """
-    Endpoint SSE pour la mise à jour en temps réel de la file d'attente.
-
-    Envoie l'état de la file toutes les 2 secondes.
+    Endpoint JSON pour récupérer l'état de la file d'attente.
+    Pendant par le frontend via requêtes régulières (polling).
     """
     user = get_current_user(request, db)
     if not user:
@@ -228,29 +227,9 @@ async def queue_sse(
 
     queue = RequestQueue()
 
-    async def event_generator():
-        """Générateur d'événements SSE."""
-        while True:
-            # Vérifier si le client est toujours connecté
-            if await request.is_disconnected():
-                break
+    status = queue.get_queue_status(user.id)
+    remaining = get_remaining_requests(user, db)
+    status["remaining_requests"] = remaining
+    status["items"] = queue.get_user_recent_items(user.id)
 
-            # Récupérer l'état de la file pour cet utilisateur
-            status = queue.get_queue_status(user.id)
-            remaining = get_remaining_requests(user, db)
-            status["remaining_requests"] = remaining
-            
-            # Injecter l'historique complet pour que le JS gère les 2 tableaux
-            status["items"] = queue.get_user_recent_items(user.id)
-
-            yield f"data: {json.dumps(status, default=str)}\n\n"
-            await asyncio.sleep(2)
-
-    return StreamingResponse(
-        event_generator(),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-        },
-    )
+    return status

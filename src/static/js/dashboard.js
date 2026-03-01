@@ -8,38 +8,49 @@
 const APP_PREFIX = document.querySelector('meta[name="app-prefix"]')?.content || '';
 
 document.addEventListener('DOMContentLoaded', function () {
-    initQueueSSE();
+    initQueuePolling();
 });
 
 /**
- * Initialise la connexion SSE pour recevoir les mises à jour
- * de la file d'attente en temps réel.
+ * Initialise le polling (requêtes périodiques) pour recevoir les mises à jour
+ * de la file d'attente en temps réel, remplaçant l'ancienne méthode SSE.
  */
-function initQueueSSE() {
-    const evtSource = new EventSource(`${APP_PREFIX}/api/v1/queue/status`);
+function initQueuePolling() {
+    const pollInterval = 2500; // 2.5 secondes
 
-    evtSource.onmessage = function (event) {
+    async function fetchQueueStatus() {
         try {
-            const data = JSON.parse(event.data);
+            const response = await fetch(`${APP_PREFIX}/api/v1/queue/status`, {
+                headers: {
+                    'Accept': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                if (response.status === 401) {
+                    // Non authentifié, redirection vers login
+                    window.location.href = `${APP_PREFIX}/login`;
+                    return;
+                }
+                throw new Error(`Erreur HTTP: ${response.status}`);
+            }
+
+            const data = await response.json();
             updateQueueDisplay(data);
         } catch (e) {
-            console.error('Erreur de parsing SSE :', e);
+            console.error('Erreur lors du polling :', e);
+            const indicator = document.getElementById('queue-indicator');
+            if (indicator) {
+                indicator.innerHTML = '<span class="text-danger"><i class="bi bi-wifi-off me-1"></i>Déconnecté</span>';
+            }
         }
-    };
+    }
 
-    evtSource.onerror = function () {
-        console.warn('Connexion SSE perdue, reconnexion dans 5s…');
-        const indicator = document.getElementById('queue-indicator');
-        if (indicator) {
-            indicator.innerHTML = '<span class="text-danger"><i class="bi bi-wifi-off me-1"></i>Déconnecté</span>';
-        }
+    // Lancer le premier appel immédiatement
+    fetchQueueStatus();
 
-        // Tenter de reconnecter après 5s
-        setTimeout(function () {
-            evtSource.close();
-            initQueueSSE();
-        }, 5000);
-    };
+    // Configurer les appels réguliers
+    setInterval(fetchQueueStatus, pollInterval);
 }
 
 /**
@@ -50,7 +61,7 @@ function updateQueueDisplay(data) {
     // Mettre à jour le compteur de file
     const queueLength = document.getElementById('queue-length');
     if (queueLength) {
-        queueLength.textContent = `File : ${data.queue_length}`;
+        queueLength.textContent = `File : ${data.queue_length || 0}`;
     }
 
     // Mettre à jour les requêtes restantes
@@ -62,8 +73,6 @@ function updateQueueDisplay(data) {
                 remaining.className = 'fw-bold fs-4 text-info';
             } else {
                 remaining.textContent = data.remaining_requests;
-
-                // Mettre à jour la couleur
                 remaining.className = 'fw-bold fs-4';
                 if (data.remaining_requests > 10) {
                     remaining.classList.add('text-success');
@@ -81,10 +90,10 @@ function updateQueueDisplay(data) {
     const processingId = document.getElementById('processing-id');
 
     if (data.processing) {
-        processingSection.classList.remove('d-none');
-        processingId.textContent = `ID : ${data.processing.request_id}`;
+        if (processingSection) processingSection.classList.remove('d-none');
+        if (processingId) processingId.textContent = `ID : ${data.processing.request_id}`;
     } else {
-        processingSection.classList.add('d-none');
+        if (processingSection) processingSection.classList.add('d-none');
     }
 
     // Mettre à jour les tableaux
@@ -100,6 +109,7 @@ function updateQueueDisplay(data) {
         data.items.forEach(function (item) {
             const statusClass = getStatusClass(item.status);
 
+            // Filtrage strict par statut pour éviter les doublons entre tableaux
             if (item.status === 'waiting' || item.status === 'processing') {
                 activeItems++;
                 queueHtml += `
@@ -158,10 +168,10 @@ function updateQueueDisplay(data) {
         `;
     }
 
-    // Indicateur de connexion
+    // Indicateur de connexion (on affiche un texte vert pour montrer que c'est actif après mise à jour)
     const indicator = document.getElementById('queue-indicator');
     if (indicator) {
-        indicator.innerHTML = '<span class="spinner-grow spinner-grow-sm text-primary" role="status"></span> <small class="text-muted">Temps réel</small>';
+        indicator.innerHTML = '<span class="spinner-grow spinner-grow-sm text-primary" role="status"></span> <small class="text-primary fw-bold ms-1">En direct</small>';
     }
 }
 

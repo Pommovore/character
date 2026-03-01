@@ -38,9 +38,12 @@ def init_db():
     os.makedirs(DB_DIR, exist_ok=True)
     logger.info(f"Répertoire de la base de données : {DB_DIR}")
 
+    from sqlalchemy.pool import NullPool
+
     engine = create_engine(
         DATABASE_URL,
         connect_args={"check_same_thread": False},
+        poolclass=NullPool,
         echo=False,
     )
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
