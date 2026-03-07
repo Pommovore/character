@@ -68,8 +68,13 @@ curl -X POST "http://localhost:8000/api/v1/traits/extract" \
      ...
 ```
 
-Une fois le traitement terminé, l'application enverra une requête `POST` à cette URL avec le payload JSON suivant :
+Une fois le traitement terminé, l'application enverra une requête `POST` à cette URL. Le format de la charge utile (payload) dépend de l'URL du webhook.
 
+#### Format Générique (JSON)
+
+C'est le format par défaut envoyé à toute URL qui n'est pas une URL de webhook Discord.
+
+**Succès :**
 ```json
 {
   "request_id": "abc-123-xyz",
@@ -78,7 +83,44 @@ Une fois le traitement terminé, l'application enverra une requête `POST` à ce
   "result_url": "http://localhost:8000/api/v1/traits/get_character/abc-123-xyz"
 }
 ```
-Vous pourrez alors appeler l'URL `result_url` (toujours en fournissant un mot de passe ou sans, selon la route) pour récupérer l'analyse finale. En cas d'erreur de traitement, le statut sera `failed` et une clé `error` sera incluse à la place de `result_url`.
+
+**Échec :**
+```json
+{
+  "request_id": "abc-123-xyz",
+  "status": "failed",
+  "user_email": "votre@email.com",
+  "error": "Message décrivant l'erreur"
+}
+```
+
+#### Format Spécifique Discord
+
+Si l'URL fournie contient `discord.com/api/webhooks`, le payload est automatiquement formaté avec des "embeds" pour un affichage enrichi dans Discord.
+
+**Exemple de succès :**
+```json
+{
+  "embeds": [{
+    "title": "✅ Extraction Terminée",
+    "description": "**ID** : `abc-123-xyz`\n**Utilisateur** : `votre@email.com`\n**Résultat** : [Télécharger le JSON](http://localhost:8000/api/v1/traits/get_character/abc-123-xyz)",
+    "color": 65280
+  }]
+}
+```
+
+**Exemple d'échec :**
+```json
+{
+  "embeds": [{
+    "title": "❌ Échec de l'Extraction",
+    "description": "**ID** : `abc-123-xyz`\n**Utilisateur** : `votre@email.com`\n**Erreur** : Message d'erreur",
+    "color": 16711680
+  }]
+}
+```
+
+Vous pourrez alors appeler l'URL `result_url` pour récupérer l'analyse finale.
 
 ## Récupération des Résultats
 

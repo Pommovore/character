@@ -148,6 +148,7 @@ def deploy_prod(config):
                     
                 existing_env["PORT"] = deploy_conf.get("port", 8000)
                 existing_env["HOST"] = "127.0.0.1"
+                existing_env["RELOAD"] = "False"
                     
                 new_env = "\n".join([f"{k}={v}" for k, v in existing_env.items()])
                 c.run("cat << 'EOF' > .env\n" + new_env + "\nEOF")

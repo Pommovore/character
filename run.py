@@ -17,8 +17,8 @@ def run_server():
     host = os.environ.get("HOST", "0.0.0.0")
     port = int(os.environ.get("PORT", 8000))
     
-    # Mode reload activé par défaut pour le développement
-    reload = os.environ.get("RELOAD", "True").lower() == "true"
+    # Mode reload désactivé par défaut (activable via RELOAD=True dans .env pour le dev)
+    reload = os.environ.get("RELOAD", "False").lower() == "true"
     
     print(f"Démarrage du serveur sur {host}:{port} (reload={reload})")
     
