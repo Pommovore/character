@@ -43,7 +43,7 @@ uv sync
 
 ```bash
 # Lancer l'application
-uv run python -m src.main
+uv run run.py
 ```
 
 L'API sera disponible à l'adresse `http://localhost:8000`.
@@ -62,7 +62,7 @@ payload = {
     "text": "Harry Potter est un jeune sorcier courageux et loyal qui fait constamment preuve de bravoure face au danger. Malgré son éducation difficile chez les Dursley, il maintient une forte boussole morale et valorise l'amitié par-dessus tout.",
     "directive": "Analyser les traits de leadership",
     "request_id": "harry-potter-001",
-    "model_name": "distilbert-base-uncased"
+    "model_name": "Qwen/Qwen2.5-72B-Instruct"
 }
 
 response = requests.post(url, json=payload)

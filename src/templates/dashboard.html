@@ -112,6 +112,7 @@
                 <hr class="border-secondary">
                 <form action="{{ request.scope.get('root_path', '') }}/dashboard/model" method="POST"
                     class="row align-items-center">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
                     <div class="col-auto">
                         <label for="model" class="col-form-label text-muted">Modèle d'Extraction API :</label>
                     </div>

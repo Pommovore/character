@@ -10,12 +10,12 @@ import logging
 
 from fastapi import APIRouter, Request, Form, Depends
 from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from src.database import get_db
 from src.models.user import User
 from src.services.auth_service import hash_password
+from src.api.common import templates
 
 # Configuration du logging
 logger = logging.getLogger(__name__)
@@ -26,9 +26,6 @@ router = APIRouter(tags=["Setup"])
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 ENV_FILE = os.path.join(BASE_DIR, ".env")
 
-# Templates
-TEMPLATES_DIR = os.path.join(os.path.dirname(__file__), "..", "templates")
-templates = Jinja2Templates(directory=TEMPLATES_DIR)
 
 
 def is_setup_done() -> bool:

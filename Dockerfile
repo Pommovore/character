@@ -8,19 +8,21 @@ WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 
-# Install system dependencies
+# Install system dependencies + uv
 RUN apt-get update \
     && apt-get install -y --no-install-recommends gcc curl \
     && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && pip install --no-cache-dir uv
 
 # Create a non-root user
 RUN adduser --disabled-password --gecos "" appuser
 
-# Install Python dependencies
-COPY requirements.txt .
-RUN pip install --upgrade pip \
-    && pip install --no-cache-dir -r requirements.txt
+# Copy dependency files first (cache layer)
+COPY pyproject.toml uv.lock ./
+
+# Install Python dependencies via uv
+RUN uv sync --frozen --no-dev
 
 # Copy application code
 COPY . .
@@ -41,5 +43,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD curl -f http://localhost:8000/health || exit 1
 
-# Command to run the application
-CMD ["python", "-m", "src.main"]
+# Command to run the application (aligned with run.py used by systemd)
+CMD ["uv", "run", "python", "run.py"]

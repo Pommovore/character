@@ -35,7 +35,7 @@ class QueueItem:
     user_email: str
     text: str
     directive: Optional[str] = None
-    model_name: str = "distilbert-base-uncased"
+    model_name: str = "Qwen/Qwen2.5-72B-Instruct"
     status: QueueItemStatus = QueueItemStatus.WAITING
     position: int = 0
     result: Any = None

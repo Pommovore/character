@@ -1,4 +1,4 @@
-# Règles et Conventions du Projet CHARACTER
+# Règles et Conventions des projets développés avec ANTIGRAVITY
 
 Ce document définit les standards de développement, l'architecture et les workflows à respecter pour maintenir la cohérence et la qualité du projet.
 
@@ -12,37 +12,37 @@ Ce document définit les standards de développement, l'architecture et les work
 ## 2. Architecture & Organisation du Code
 
 ### Backend
-*   **Structure Modulaire** : Utiliser les **Blueprints** FastAPI pour organiser les routes par domaine fonctionnel (ex: `routes/auth_routes.py`, `routes/event_routes.py`).
+*   **Structure Modulaire** : Utiliser les **APIRouter** de FastAPI pour organiser les routes par domaine fonctionnel (ex: `routes/admin_routes.py`, `routes/user_routes.py`).
 *   **Logique Métier** : Déporter la logique complexe dans des **Services** (`services/`) plutôt que de la laisser dans les routes.
-*   **Modèles** : Définis dans `models.py`. Utiliser SQLAlchemy ORM.
-*   **Gestion des Erreurs** : Utiliser des blocs `try/except` et retourner des messages flash ou JSON appropriés.
-*   **Éviter les requêtes N+1** : Utiliser `joinedload` dans les requêtes SQLAlchemy pour charger les relations efficacement.
+*   **Modèles** : Définis dans `models/` avec SQLAlchemy ORM. Validation assurée par Pydantic.
+*   **Gestion des Erreurs** : Utiliser `HTTPException` pour les requêtes API et retourner des affichages pertinents côté frontend via le contexte Jinja2.
+*   **Cycle de vie** : Utiliser le context manager `lifespan` pour la gestion propre des connexions et pools (pas de `@app.on_event` déprécié).
 
 ### Frontend
 *   **Framework UI** : **Bootstrap 5** est le standard. Ne pas introduire d'autres frameworks CSS lourds (ex: Tailwind) sans validation.
 *   **Icônes** : Utiliser **Bootstrap Icons** (`bi bi-nom-icone`).
 *   **Templating** : Jinja2. Utiliser l'héritage de templates (`{% extends "base.html" %}`).
-*   **JavaScript** : Écrire du JS moderne (ES6+). Placer les scripts spécifiques dans `static/js/`. Tout le code javascript qui peut être externalisé des fichiers html doit l'être.
+*   **JavaScript** : Écrire du JS moderne (ES6+). Placer les scripts spécifiques dans `static/js/`. Echapper le contenu dynamique (`escapeHtml()`) avant d'utiliser `.innerHTML`.
 
 ## 3. Conventions de Nommage et Langue
 
-*   **Code (Variables, Fonctions, Classes)** : Anglais (`get_user`, `Event`, `is_organizer`).
+*   **Code (Variables, Fonctions, Classes)** : Anglais (`get_user`, `Event`, `is_admin_mode`).
 *   **Commentaires et Docstrings** : Français (pour faciliter la compréhension par l'équipe).
 *   **Interfaces Utilisateur (UI)** : Français.
 *   **Base de Données** : Noms de tables et colonnes en Anglais (`user`, `event_id`, `created_at`).
 
 ## 4. Base de Données
 
-*   **Migrations** : Utiliser **Flask-Migrate** (`alembic`).
-    *   Toute modification de schéma DOIT passer par une migration.
-    *   Commandes : `flask db migrate -m "Description"` puis `flask db upgrade`.
+*   **Migrations** : Utiliser **Alembic pur** ou initialisation automatique (`create_all` pour SQLite simple). (Pas de Flask-Migrate).
+    *   Toute nouvelle table doit lier un modèle Pydantic de validation.
 *   **Contraintes** : Définir explicitement les Foreign Keys et Index.
+*   **Concurrence SQLite** : En contexte asynchrone multithread (API + File d'attente), utiliser `NullPool` avec `check_same_thread=False` pour éviter les situations de *database is locked*.
 
 ## 5. Workflow de Développement
 
 ### Démarrage
-*   Activer l'environnement virtuel : `source .venv/bin/activate` (ou via `uv`).
-*   Lancer le serveur de dev : `uv run flask run` ou via `run_local.sh`.
+*   Exécuter les instructions via le gestionnaire de dépendances `uv`.
+*   Lancer le serveur : `uv run run.py` (ou `uv run uvicorn src.main:app` selon configuration du Root Path).
 
 ### Déploiement
 *   Utiliser le script `deploy.py`.
@@ -50,12 +50,12 @@ Ce document définit les standards de développement, l'architecture et les work
 *   Toujours tester en local (`--dev`) avant de déployer en production.
 *   Commande journalière (mise à jour légère du code) : `uv run python deploy.py --update`.
 *   Commande globale (Mise à jour code + config Nginx/Systemd) : `uv run python deploy.py --prod`.
-* se baser sur le fichier de configuration `config/deploy.conf` pour les paramètres de déploiement.
+*   Se baser sur le fichier de configuration `config/deploy.conf` pour les paramètres de déploiement.
 
 ## 6. Bonnes Pratiques
 
 *   **Sécurité** :
-    *   Utiliser les décorateurs `@login_required` et `@admin_required`.
-    *   Protéger les formulaires avec CSRF (`form.hidden_tag()` ou `csrf_token`).
-*   **Logs** : Utiliser `ActivityLog` pour tracer les actions importantes (création, modification, suppression).
-*   **Code Propre** : Supprimer le code mort et les `print` de debug avant de commiter.
+    *   Utiliser l'injection de dépendances idiomatique de FastAPI (`Depends(get_current_user)`, `Depends(require_admin)`).
+    *   Protéger tous les formulaires POST naviguables HTML avec le middleware CSRF (`starlette-csrf`) et `<input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">`.
+*   **Monitoring** : Utiliser un journal de logs (`RequestLog`) pour tracer et limiter (Rate Limiting) l'utilisation de l'API par token.
+*   **Code Propre** : Supprimer le code mort (imports non utilisés, commentaires obsolètes) et utiliser les analyseurs statiques (`flake8`, `mypy`) via la suite d'outils de dév `uv`.

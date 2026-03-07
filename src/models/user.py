@@ -29,7 +29,7 @@ class User(Base):
         String(20), nullable=False, default="user"
     )  # user, admin
     preferred_model = Column(String(255), nullable=True)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
 
     # Relations
     tokens = relationship("ApiToken", back_populates="user", cascade="all, delete-orphan")
@@ -49,7 +49,7 @@ class ApiToken(Base):
     token = Column(String(64), unique=True, nullable=False, index=True)
     source_string = Column(Text, nullable=True)  # La chaîne d'origine utilisée pour générer le token
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
 
     # Relations
     user = relationship("User", back_populates="tokens")
@@ -68,7 +68,7 @@ class RequestLog(Base):
     user_id = Column(Integer, ForeignKey("user.id"), nullable=False)
     token_id = Column(Integer, ForeignKey("api_token.id"), nullable=False)
     request_id = Column(String(100), nullable=True)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
 
     # Relations
     user = relationship("User", back_populates="request_logs")

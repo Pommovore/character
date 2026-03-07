@@ -8,7 +8,6 @@ import logging
 
 from fastapi import APIRouter, Request, Depends, Form, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from src.database import get_db
@@ -16,16 +15,13 @@ from src.models.user import User, ApiToken
 from src.services.auth_service import (
     get_current_user, generate_api_token, generate_random_token
 )
+from src.api.common import templates
 
 # Configuration du logging
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/admin", tags=["Administration"])
 
-# Templates
-import os
-TEMPLATES_DIR = os.path.join(os.path.dirname(__file__), "..", "templates")
-templates = Jinja2Templates(directory=TEMPLATES_DIR)
 
 
 def require_admin(request: Request, db: Session = Depends(get_db)) -> User:
@@ -170,7 +166,7 @@ async def create_random_token(
     # Désactiver les anciens tokens
     db.query(ApiToken).filter(
         ApiToken.user_id == user_id,
-        ApiToken.is_active == True
+        ApiToken.is_active.is_(True)
     ).update({"is_active": False})
 
     token_string = generate_random_token()

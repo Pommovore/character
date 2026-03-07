@@ -1,7 +1,7 @@
 [project]
 name = "character"
 version = "0.1.0"
-description = "Extracteur de traits de caractère utilisant des modèles Transformers"
+description = "Extracteur de traits de caractère utilisant les LLM Hugging Face"
 readme = "README.md"
 authors = [{ name = "Jack", email = "jack@example.com" }]
 license = { text = "MIT" }
@@ -14,14 +14,13 @@ dependencies = [
     "huggingface-hub",
     "httpx",
     "sqlalchemy",
-    "passlib[bcrypt]",
     "python-jose[cryptography]",
     "jinja2",
     "python-dotenv",
-    "aiohttp",
-    "bcrypt<4.0.0",
+    "bcrypt",
     "pyaml>=26.2.1",
     "fabric>=3.2.2",
+    "starlette-csrf>=3.0.0",
 ]
 
 [dependency-groups]

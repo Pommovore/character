@@ -34,7 +34,7 @@ POST /api/v1/traits/extract
   "text": "Harry Potter est un jeune sorcier courageux et loyal qui fait constamment preuve de bravoure face au danger. Malgré son éducation difficile chez les Dursley, il maintient une forte boussole morale et valorise l'amitié par-dessus tout.",
   "directive": "Analyser les traits de leadership et de courage",
   "request_id": "abc-123-xyz",
-  "model_name": "distilbert-base-uncased"
+  "model_name": "Qwen/Qwen2.5-72B-Instruct"
 }
 ```
 
@@ -42,7 +42,7 @@ Paramètres :
 - `text` (obligatoire) : La description du personnage à analyser. Doit comporter au moins 10 caractères. **Si ce champ contient une URL (http/https), le contenu textuel pointé par l'URL sera automatiquement téléchargé et utilisé pour l'analyse.**
 - `request_id` (obligatoire) : Identifiant unique pour cette demande d'analyse.
 - `directive` (optionnel) : Instructions supplémentaires pour guider l'analyse.
-- `model_name` (optionnel) : Le modèle Hugging Face à utiliser pour l'extraction des traits. Par défaut : "distilbert-base-uncased".
+- `model_name` (optionnel) : Le modèle Hugging Face à utiliser pour l'extraction des traits. Par défaut : "Qwen/Qwen2.5-72B-Instruct".
 
 > **Note** : Lorsqu'une URL est fournie, seuls les contenus textuels (text/*, application/json, application/xml) sont acceptés. La taille maximale du contenu téléchargé est de 1 Mo.
 
@@ -152,7 +152,7 @@ GET /api/v1/traits/get_character/{request_id}
     }
   ],
   "summary": "Ce personnage est principalement caractérisé par Courageux (Personnalité), Loyal (Personnalité) et Moral (Valeurs).",
-  "model_used": "distilbert-base-uncased",
+  "model_used": "Qwen/Qwen2.5-72B-Instruct",
   "request_id": "abc-123-xyz",
   "directive": "Analyser les traits de leadership et de courage",
   "status": "completed"
@@ -217,7 +217,7 @@ payload = {
     "text": "Harry Potter est un jeune sorcier courageux et loyal qui fait constamment preuve de bravoure face au danger. Malgré son éducation difficile chez les Dursley, il maintient une forte boussole morale et valorise l'amitié par-dessus tout.",
     "directive": "Analyser les traits de leadership",
     "request_id": "demo-123",
-    "model_name": "distilbert-base-uncased"
+    "model_name": "Qwen/Qwen2.5-72B-Instruct"
 }
 
 response = requests.post(submit_url, json=payload)
@@ -287,7 +287,7 @@ headers = {
 payload = {
     "text": "Gandalf le Gris est un sage, puissant et bienveillant magicien...",
     "request_id": "gandalf-webhook-01",
-    "model_name": "distilbert-base-uncased"
+    "model_name": "Qwen/Qwen2.5-72B-Instruct"
 }
 
 response = requests.post(submit_url, json=payload, headers=headers)

@@ -4,14 +4,11 @@ Ce module gère l'authentification des utilisateurs, leur inscription,
 et l'affichage de leur tableau de bord avec la file d'attente en temps réel.
 """
 
-import json
-import asyncio
 import logging
 import os
 
 from fastapi import APIRouter, Request, Form, Depends, HTTPException, BackgroundTasks
 from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from src.database import get_db
@@ -23,15 +20,13 @@ from src.services.auth_service import (
 from src.services.request_queue import RequestQueue
 from src.services.discord_service import send_discord_notification
 from src.config import get_available_models
+from src.api.common import templates
 
 # Configuration du logging
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["Utilisateur"])
 
-# Templates
-TEMPLATES_DIR = os.path.join(os.path.dirname(__file__), "..", "templates")
-templates = Jinja2Templates(directory=TEMPLATES_DIR)
 
 
 @router.get("/login", response_class=HTMLResponse)
@@ -80,10 +75,14 @@ async def login_submit(
     token = create_access_token({"user_id": user.id, "email": user.email})
     redirect_url = f"{request.scope.get('root_path', '')}/admin" if user.role == "admin" else f"{request.scope.get('root_path', '')}/dashboard"
     response = RedirectResponse(url=redirect_url, status_code=302)
+    # En production (HTTPS), activer le flag secure pour empêcher la
+    # transmission du cookie sur des connexions non chiffrées.
+    is_production = os.environ.get("ALLOWED_ORIGINS", "*") != "*"
     response.set_cookie(
         key="access_token",
         value=token,
         httponly=True,
+        secure=is_production,
         max_age=86400,  # 24 heures
         samesite="lax",
     )
@@ -164,7 +163,7 @@ async def dashboard_page(
     # Récupérer le token actif
     active_token = db.query(ApiToken).filter(
         ApiToken.user_id == user.id,
-        ApiToken.is_active == True
+        ApiToken.is_active.is_(True)
     ).first()
 
     # Requêtes restantes

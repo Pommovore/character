@@ -77,13 +77,13 @@ Depuis votre machine de développement, choisissez la commande de déploiement (
 
 **Plutôt pour le code au quotidien (plus sécure et rapide) :**
 ```bash
-python deploy.py --update
+uv run python deploy.py --update
 ```
 Ce script va uniquement se baser sur les fichiers suivis par git (`git ls-files`) pour pousser votre code de façon sélective et recharger l'application Python (`uvicorn`). Il ignore tout fichier local parasite et les modifications de configuration de serveur (Systemd, Nginx). 
 
 **Pour le tout premier déploiement complet ou mise à jour Serveur :**
 ```bash
-python deploy.py --prod
+uv run python deploy.py --prod
 ```
 Ce script va automatiquement :
 - Vous demander interactivement de configurer ou vérifier les identifiants administrateur de production (Email, Mot de passe sécurisé, Token Hugging Face, et Webhook Discord).

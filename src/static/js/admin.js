@@ -8,6 +8,17 @@
 const APP_PREFIX = document.querySelector('meta[name="app-prefix"]')?.content || '';
 
 /**
+ * Échappe les caractères spéciaux HTML pour prévenir les injections XSS.
+ * @param {string} str - La chaîne à échapper
+ * @returns {string} La chaîne échappée
+ */
+function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.appendChild(document.createTextNode(str));
+    return div.innerHTML;
+}
+
+/**
  * Valide ou change le statut d'un utilisateur.
  * @param {number} userId - Identifiant de l'utilisateur
  * @param {string} status - Nouveau statut (normal, vip, rejected)
@@ -196,7 +207,7 @@ function showToast(message, type) {
     const toastHtml = `
         <div id="${toastId}" class="toast align-items-center text-bg-${type} border-0" role="alert">
             <div class="d-flex">
-                <div class="toast-body">${message}</div>
+                <div class="toast-body">${escapeHtml(message)}</div>
                 <button type="button" class="btn-close btn-close-white me-2 m-auto"
                         data-bs-dismiss="toast"></button>
             </div>

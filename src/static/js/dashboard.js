@@ -7,6 +7,17 @@
 
 const APP_PREFIX = document.querySelector('meta[name="app-prefix"]')?.content || '';
 
+/**
+ * Échappe les caractères spéciaux HTML pour prévenir les injections XSS.
+ * @param {string} str - La chaîne à échapper
+ * @returns {string} La chaîne échappée
+ */
+function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.appendChild(document.createTextNode(str));
+    return div.innerHTML;
+}
+
 document.addEventListener('DOMContentLoaded', function () {
     initQueuePolling();
 });
@@ -108,14 +119,16 @@ function updateQueueDisplay(data) {
     if (data.items && data.items.length > 0) {
         data.items.forEach(function (item) {
             const statusClass = getStatusClass(item.status);
+            const safeId = escapeHtml(item.request_id);
+            const safeStatus = escapeHtml(item.status);
 
             // Filtrage strict par statut pour éviter les doublons entre tableaux
             if (item.status === 'waiting' || item.status === 'processing') {
                 activeItems++;
                 queueHtml += `
                     <tr>
-                        <td class="font-monospace small">${item.request_id}</td>
-                        <td><span class="badge ${statusClass}">${item.status}</span></td>
+                        <td class="font-monospace small">${safeId}</td>
+                        <td><span class="badge ${statusClass}">${safeStatus}</span></td>
                         <td>${item.position >= 0 ? '#' + (item.position + 1) : '—'}</td>
                     </tr>
                 `;
@@ -123,18 +136,18 @@ function updateQueueDisplay(data) {
                 let actionHtml = '—';
                 if (item.status === 'completed') {
                     actionHtml = `
-                    <a href="${APP_PREFIX}/api/v1/traits/get_character/${item.request_id}" target="_blank" class="btn btn-sm btn-outline-info">
+                    <a href="${APP_PREFIX}/api/v1/traits/get_character/${encodeURIComponent(item.request_id)}" target="_blank" class="btn btn-sm btn-outline-info">
                         <i class="bi bi-download"></i> JSON
                     </a>`;
                 } else if (item.status === 'failed') {
-                    const errorMsg = item.error ? item.error.replace(/"/g, '&quot;') : 'Erreur inconnue';
+                    const errorMsg = item.error ? escapeHtml(item.error) : 'Erreur inconnue';
                     actionHtml = `<span class="text-danger small" title="${errorMsg}"><i class="bi bi-exclamation-triangle"></i> Erreur</span>`;
                 }
 
                 historyHtml += `
                     <tr>
-                        <td class="font-monospace small">${item.request_id}</td>
-                        <td><span class="badge ${statusClass}">${item.status}</span></td>
+                        <td class="font-monospace small">${safeId}</td>
+                        <td><span class="badge ${statusClass}">${safeStatus}</span></td>
                         <td>${actionHtml}</td>
                     </tr>
                 `;

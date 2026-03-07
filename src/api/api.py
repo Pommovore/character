@@ -7,6 +7,7 @@ de setup, et tous les routeurs.
 
 import os
 import logging
+from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request
@@ -14,6 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette_csrf import CSRFMiddleware
 
 from src import __version__
 from src.database import init_db
@@ -76,13 +78,53 @@ def create_application(start_worker: bool = True) -> FastAPI:
         load_dotenv()
         logger.info("Tentative de chargement des variables d'environnement depuis le CWD")
 
+    # Gestionnaire de cycle de vie (remplacement de @app.on_event déprécié)
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        """Initialise les ressources au démarrage et les libère à l'arrêt."""
+        # --- Démarrage ---
+        init_db()
+        logger.info("Base de données initialisée")
+
+        if start_worker:
+            from src.services.request_queue import RequestQueue
+            from src.services.traits_extractor import TraitsExtractor
+
+            queue = RequestQueue()
+
+            def process_request(text, directive, model_name):
+                """Fonction de traitement pour la file d'attente."""
+                extractor = TraitsExtractor(model_name)
+                traits, validated_model = extractor.extract_traits(text, directive)
+                summary = extractor.generate_summary(traits)
+                return {
+                    "traits": [{"trait": t.trait, "score": t.score, "category": t.category} for t in traits],
+                    "summary": summary,
+                    "model_used": model_name,
+                    "validated_model": validated_model,
+                }
+
+            queue.start_worker(process_request)
+            logger.info("Worker de la file d'attente démarré")
+        else:
+            logger.info("Démarrage du worker ignoré (start_worker=False)")
+
+        yield  # L'application tourne ici
+
+        # --- Arrêt ---
+        from src.services.request_queue import RequestQueue
+        queue = RequestQueue()
+        queue.stop_worker()
+        logger.info("Worker de la file d'attente arrêté proprement")
+
     app = FastAPI(
         title="Extracteur de Traits de Caractère",
         description=(
             "API pour extraire les traits de caractère à partir de descriptions textuelles "
-            "en utilisant les modèles transformer de Hugging Face."
+            "en utilisant les modèles LLM de Hugging Face."
         ),
         version=__version__,
+        lifespan=lifespan,
         docs_url="/api/docs",
         redoc_url="/api/redoc",
         openapi_url="/api/openapi.json",
@@ -104,6 +146,17 @@ def create_application(start_worker: bool = True) -> FastAPI:
         allow_credentials=allow_credentials,
         allow_methods=["*"],
         allow_headers=["*"],
+    )
+
+    # Protection CSRF pour les formulaires HTML (Double Submit Cookie)
+    # Les routes API sont exclues car elles utilisent l'authentification par token
+    csrf_secret = os.environ.get("SECRET_KEY", "dev-csrf-secret")
+    app.add_middleware(
+        CSRFMiddleware,
+        secret=csrf_secret,
+        required_urls=[r"/login$", r"/register$", r"/setup$", r"/dashboard/model$",
+                       r"/admin/users/.+"],
+        exempt_urls=[r"/api/.*", r"/health$", r"/static/.*"],
     )
 
     # Ajouter le middleware de proxy/root_path EN PREMIER (le dernier ajouté est exécuté en premier)
@@ -154,46 +207,6 @@ def create_application(start_worker: bool = True) -> FastAPI:
             status_code=500,
             content={"detail": "Une erreur inattendue s'est produite."}
         )
-
-    # Initialiser la base de données au démarrage
-    @app.on_event("startup")
-    async def startup_event():
-        """Initialise la base de données et le worker de la file d'attente au démarrage."""
-        init_db()
-        logger.info("Base de données initialisée")
-
-        if start_worker:
-            # Démarrer le worker de la file d'attente
-            from src.services.request_queue import RequestQueue
-            from src.services.traits_extractor import TraitsExtractor
-
-            queue = RequestQueue()
-
-            def process_request(text, directive, model_name):
-                """Fonction de traitement pour la file d'attente."""
-                extractor = TraitsExtractor(model_name)
-                traits, validated_model = extractor.extract_traits(text, directive)
-                summary = extractor.generate_summary(traits)
-                return {
-                    "traits": [{"trait": t.trait, "score": t.score, "category": t.category} for t in traits],
-                    "summary": summary,
-                    "model_used": model_name,
-                    "validated_model": validated_model,
-                }
-
-            queue.start_worker(process_request)
-            logger.info("Worker de la file d'attente démarré")
-        else:
-            logger.info("Démarrage du worker ignoré (start_worker=False)")
-
-    # Arrêter proprement le worker à la fermeture
-    @app.on_event("shutdown")
-    async def shutdown_event():
-        """Arrête le worker de la file d'attente à la fermeture."""
-        from src.services.request_queue import RequestQueue
-        queue = RequestQueue()
-        queue.stop_worker()
-        logger.info("Worker de la file d'attente arrêté proprement")
 
     return app
 

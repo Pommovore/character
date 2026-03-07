@@ -21,7 +21,7 @@ class ExtractionResult(Base):
     status = Column(String(20), nullable=False)  # completed, failed
     result_json = Column(JSON, nullable=True)     # Contient les traits et le summary
     error_message = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
 
     def __repr__(self):
         return f"<ExtractionResult(id={self.id}, request_id='{self.request_id}', status='{self.status}')>"

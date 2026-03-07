@@ -134,7 +134,7 @@ La configuration CI/CD se trouve dans `.github/workflows/`.
 
 Pour ajouter la prise en charge d'un nouveau modèle Hugging Face :
 
-1. Assurez-vous que le modèle est compatible avec la classification de séquences
+1. Assurez-vous que le modèle est compatible avec la génération de texte (LLM de type Instruct)
 2. Ajoutez toute tokenisation ou prétraitement spécial dans la classe `TraitsExtractor`
 3. Mettez à jour la documentation pour refléter la nouvelle option de modèle
 4. Ajoutez des tests pour vérifier que le modèle fonctionne correctement

@@ -107,7 +107,7 @@ def create_access_token(data: dict, expires_delta: Optional[int] = None) -> str:
         Token JWT encodé
     """
     to_encode = data.copy()
-    expire = datetime.datetime.utcnow() + datetime.timedelta(
+    expire = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(
         minutes=expires_delta or ACCESS_TOKEN_EXPIRE_MINUTES
     )
     to_encode.update({"exp": expire})
@@ -213,7 +213,7 @@ def validate_api_token(authorization: str, db: Session) -> tuple:
     # Chercher le token en base
     api_token = db.query(ApiToken).filter(
         ApiToken.token == token_string,
-        ApiToken.is_active == True
+        ApiToken.is_active.is_(True)
     ).first()
 
     if not api_token:
@@ -228,19 +228,21 @@ def validate_api_token(authorization: str, db: Session) -> tuple:
         )
 
     # Vérifier le rate limit
-    since = datetime.datetime.utcnow() - datetime.timedelta(hours=24)
+    since = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=24)
     request_count = db.query(RequestLog).filter(
         RequestLog.user_id == user.id,
         RequestLog.created_at >= since
     ).count()
 
-    rate_limit = RATE_LIMIT_VIP if user.status == "vip" else RATE_LIMIT_NORMAL
-    if request_count >= rate_limit:
-        raise HTTPException(
-            status_code=429,
-            detail=f"Limite de requêtes atteinte ({rate_limit}/24h). "
-                   f"Réessayez plus tard."
-        )
+    # Les administrateurs n'ont pas de quota de requêtes
+    if user.role != "admin":
+        rate_limit = RATE_LIMIT_VIP if user.status == "vip" else RATE_LIMIT_NORMAL
+        if request_count >= rate_limit:
+            raise HTTPException(
+                status_code=429,
+                detail=f"Limite de requêtes atteinte ({rate_limit}/24h). "
+                       f"Réessayez plus tard."
+            )
 
     return user, api_token
 
@@ -256,7 +258,7 @@ def get_remaining_requests(user: User, db: Session) -> int:
     Returns:
         Nombre de requêtes restantes dans les prochaines 24h
     """
-    since = datetime.datetime.utcnow() - datetime.timedelta(hours=24)
+    since = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=24)
     request_count = db.query(RequestLog).filter(
         RequestLog.user_id == user.id,
         RequestLog.created_at >= since
