@@ -60,6 +60,33 @@ class ProxyPrefixMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 
 
+class CSRFFormMiddleware(BaseHTTPMiddleware):
+    """Middleware qui extrait le token CSRF du corps du formulaire (POST)
+    pour le rendre disponible au CSRFMiddleware via les headers.
+    Nécessaire car starlette-csrf v3+ ne lit pas le corps du formulaire par défaut.
+    """
+
+    async def dispatch(self, request: Request, call_next):
+        if request.method == "POST":
+            content_type = request.headers.get("content-type", "")
+            if "application/x-www-form-urlencoded" in content_type:
+                try:
+                    # Lire le formulaire. Starlette met en cache le résultat dans request._form.
+                    form = await request.form()
+                    csrf_token = form.get("csrf_token")
+                    if csrf_token:
+                        # Ajouter le token aux headers dans le scope (car headers est immuable)
+                        # Starlette-csrf cherche par défaut 'x-csrftoken'
+                        headers = list(request.scope["headers"])
+                        headers.append((b"x-csrftoken", csrf_token.encode()))
+                        request.scope["headers"] = headers
+                except Exception as e:
+                    logger.debug(f"Erreur lors de l'extraction du token depuis le formulaire : {e}")
+
+        return await call_next(request)
+
+
+
 def create_application(start_worker: bool = True) -> FastAPI:
     """
     Crée et configure l'application FastAPI.
@@ -163,7 +190,10 @@ def create_application(start_worker: bool = True) -> FastAPI:
         ],
     )
 
-    # Ajouter le middleware de proxy/root_path EN PREMIER (le dernier ajouté est exécuté en premier)
+    # Ajouter le middleware d'extraction du formulaire (avant CSRFMiddleware dans la pile d'exécution)
+    app.add_middleware(CSRFFormMiddleware)
+
+    # Ajouter le middleware de proxy/root_path EN DERNIER pour qu'il s'exécute EN PREMIER
     app.add_middleware(ProxyPrefixMiddleware)
 
     # Monter les fichiers statiques
