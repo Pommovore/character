@@ -6,6 +6,7 @@ de setup, et tous les routeurs.
 """
 
 import os
+import re
 import logging
 from contextlib import asynccontextmanager
 
@@ -154,9 +155,18 @@ def create_application(start_worker: bool = True) -> FastAPI:
     app.add_middleware(
         CSRFMiddleware,
         secret=csrf_secret,
-        required_urls=[r"/login$", r"/register$", r"/setup$", r"/dashboard/model$",
-                       r"/admin/users/.+"],
-        exempt_urls=[r"/api/.*", r"/health$", r"/static/.*"],
+        required_urls=[
+            re.compile(r"/login$"),
+            re.compile(r"/register$"),
+            re.compile(r"/setup$"),
+            re.compile(r"/dashboard/model$"),
+            re.compile(r"/admin/users/.+")
+        ],
+        exempt_urls=[
+            re.compile(r"/api/.*"),
+            re.compile(r"/health$"),
+            re.compile(r"/static/.*")
+        ],
     )
 
     # Ajouter le middleware de proxy/root_path EN PREMIER (le dernier ajouté est exécuté en premier)
