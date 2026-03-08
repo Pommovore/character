@@ -156,16 +156,16 @@ def create_application(start_worker: bool = True) -> FastAPI:
         CSRFMiddleware,
         secret=csrf_secret,
         required_urls=[
-            re.compile(r"/login$"),
-            re.compile(r"/register$"),
-            re.compile(r"/setup$"),
-            re.compile(r"/dashboard/model$"),
-            re.compile(r"/admin/users/.+")
+            re.compile(r".*/login$"),
+            re.compile(r".*/register$"),
+            re.compile(r".*/setup$"),
+            re.compile(r".*/dashboard/model$"),
+            re.compile(r".*/admin/users/.+")
         ],
         exempt_urls=[
-            re.compile(r"/api/.*"),
-            re.compile(r"/health$"),
-            re.compile(r"/static/.*")
+            re.compile(r".*/api/.*"),
+            re.compile(r".*/health$"),
+            re.compile(r".*/static/.*")
         ],
     )
 
